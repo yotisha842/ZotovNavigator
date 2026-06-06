@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- Фон в стиле конструктивизма -->
+  <rect width="192" height="192" fill="#0A0A0A"/>
+  <!-- Красный круг — символ здания-цилиндра -->
+  <circle cx="96" cy="96" r="72" fill="#E63329"/>
+  <!-- Буква З -->
+  <text x="96" y="122" font-family="Arial, sans-serif" font-size="88"
+        font-weight="bold" text-anchor="middle" fill="#F5F5F0">З</text>
+</svg>

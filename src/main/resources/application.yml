@@ -29,3 +29,11 @@ spring:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+# --- Зотов.Навигатор: интеграция ---
+zotov:
+  scraper:
+    enabled: false          # true → парсить centrezotov.ru раз в час
+    interval-ms: 3600000    # интервал синхронизации (мс), default 1 час
+  embed:
+    allowed-origins: "*"    # frame-ancestors для iframe; в prod → https://centrezotov.ru

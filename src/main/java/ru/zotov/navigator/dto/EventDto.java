@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.zotov.navigator.model.Event;
+import ru.zotov.navigator.model.EventSource;
 
 import java.time.LocalDateTime;
 
@@ -27,6 +28,7 @@ public class EventDto {
     private Long zoneId;
     private String zoneName;
     private int floorNumber;
+    private String source;
 
     public static EventDto from(Event event) {
         return EventDto.builder()
@@ -40,6 +42,7 @@ public class EventDto {
                 .zoneId(event.getZone().getId())
                 .zoneName(event.getZone().getName())
                 .floorNumber(event.getZone().getFloor().getNumber())
+                .source(event.getSource() != null ? event.getSource().name() : EventSource.MANUAL.name())
                 .build();
     }
 }

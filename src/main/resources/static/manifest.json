@@ -1,0 +1,33 @@
+{
+  "name": "Зотов.Навигатор",
+  "short_name": "Зотов",
+  "description": "Интерактивный 3D-навигатор по Центру «Зотов» — культурному пространству в Москве",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EFEDE7",
+  "theme_color": "#0A0A0A",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["navigation", "lifestyle"]
+}
