@@ -5,13 +5,13 @@ import {
     zoneCenterWorld, getFloorMeta, setPulse,
 } from './building.js';
 import { drawRoute, clearRoute } from './routing.js';
-import { flyTo } from './scene.js';
+import { flyTo, setCameraViewOffset } from './scene.js';
 import * as THREE from 'three';
 
 const ZONE_LABEL = {
-    EXHIBITION: 'Выставка', CINEMA: 'Кинозал', LECTURE: 'Лекторий', SHOP: 'Магазин',
-    CAFE: 'Кафе', PUBLIC: 'Пространство', ENTRANCE: 'Вход', RESTROOM: 'Туалеты',
-    WARDROBE: 'Гардероб', ELEVATOR: 'Лифт', STAIRS: 'Лестница',
+    EXHIBITION: 'Выставка', CINEMA: 'Кинозал', LECTURE: 'Лекторий', WORKSHOP: 'Мастерская',
+    SHOP: 'Магазин', CAFE: 'Кафе', PUBLIC: 'Пространство', ENTRANCE: 'Вход',
+    RESTROOM: 'Туалеты', WARDROBE: 'Гардероб', ELEVATOR: 'Лифт', STAIRS: 'Лестница',
 };
 const EVENT_LABEL = {
     EXHIBITION: 'Выставка', LECTURE: 'Лекция', FILM: 'Кино',
@@ -29,6 +29,7 @@ const el = {
     helpToggle: document.getElementById('helpToggle'),
     modeSwitcher: document.getElementById('modeSwitcher'),
     tooltip: document.getElementById('tooltip'),
+    transportToggle: document.getElementById('transportToggle'),
 };
 
 const state = {
@@ -37,11 +38,26 @@ const state = {
     selectedFloor: null,
     plan: new Set(),          // zoneId для плана дня
     planMode: false,
+    preferElevator: false,    // false = лестница (по умолч.), true = лифт
 };
 
 function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"]/g, (c) =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+/** Короткая метка для кнопки переключателя: «1½», «2½» или «1»…«4». */
+function fmtFloorBtn(n) {
+    if (n === 1.5) return '1½';
+    if (n === 2.5) return '2½';
+    return String(Math.round(n));
+}
+
+/** Читаемая подпись уровня в тексте панели. */
+function fmtFloorLabel(n) {
+    if (n === 1.5) return 'антресоль (гардероб)';
+    if (n === 2.5) return 'переход 2½';
+    return `${Math.round(n)}-й этаж`;
 }
 
 function fmtDateTime(iso) {
@@ -75,9 +91,9 @@ function buildFloorSwitcher(floors) {
 
     [...floors].sort((a, b) => b.number - a.number).forEach((f) => {
         const b = document.createElement('button');
-        b.className = 'floor-btn';
+        b.className = 'floor-btn' + (!Number.isInteger(f.number) ? ' floor-btn--mezzanine' : '');
         b.dataset.floor = f.number;
-        b.textContent = f.number;
+        b.textContent = fmtFloorBtn(f.number);
         b.title = f.name;
         b.onclick = () => selectFloor(f.number);
         el.floorSwitcher.appendChild(b);
@@ -97,14 +113,30 @@ function selectFloor(number) {
     setFloorFocus(number);
     setActiveFloorBtn(number);
     const meta = number != null ? getFloorMeta(number) : null;
-    if (meta) flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), 46, meta.baseY + 26);
-    else flyTo(new THREE.Vector3(0, 9, 0), 52, 34);
+    if (meta) {
+        const mezz = !Number.isInteger(number);
+        flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), mezz ? 38 : 46, meta.baseY + (mezz ? 18 : 26));
+    } else {
+        flyTo(new THREE.Vector3(0, 12, 0), 60, 42);
+    }
+}
+
+function setTransportMode(preferElevator) {
+    state.preferElevator = preferElevator;
+    el.transportToggle.querySelectorAll('.transport-btn').forEach((b) => {
+        const active = b.dataset.transport === (preferElevator ? 'elevator' : 'stairs');
+        b.classList.toggle('is-active', active);
+    });
 }
 
 function wireEvents() {
     el.panelClose.onclick = hidePanel;
     el.afishaToggle.onclick = () => openAfisha(false);
     el.helpToggle.onclick = showHelp;
+
+    el.transportToggle.querySelectorAll('.transport-btn').forEach((btn) => {
+        btn.onclick = () => setTransportMode(btn.dataset.transport === 'elevator');
+    });
 
     el.modeSwitcher.querySelectorAll('.mode').forEach((btn) => {
         btn.onclick = () => {
@@ -134,11 +166,13 @@ function wireEvents() {
 function showPanel(html) {
     el.panelContent.innerHTML = html;
     el.panel.hidden = false;
+    setCameraViewOffset(el.panel.offsetWidth);
 }
 
 // Закрытие панели = полный сброс: убираем маршрут и подсветку.
 function hidePanel() {
     el.panel.hidden = true;
+    setCameraViewOffset(0);
     clearRoute();
     highlightZones(null);
     setPulse([]);
@@ -161,7 +195,7 @@ export function showZone(zoneId) {
     showPanel(`
         <span class="tag">${escapeHtml(ZONE_LABEL[z.type] || z.type)}</span>
         <h2>${escapeHtml(z.name)}</h2>
-        <div class="muted">${z.floorNumber}-й этаж</div>
+        <div class="muted">${fmtFloorLabel(z.floorNumber)}</div>
         <p>${escapeHtml(z.description || '')}</p>
         ${isStart ? '<div class="meta-row"><span>Вы здесь</span><b>✓ точка старта</b></div>' : ''}
         <button class="btn btn--primary" data-act="route" data-id="${z.id}">Маршрут сюда</button>
@@ -180,7 +214,7 @@ export function showZone(zoneId) {
 async function buildRouteTo(toZoneId) {
     if (!state.startZoneId) { state.startZoneId = toZoneId; }
     try {
-        const resp = await api.route(state.startZoneId, toZoneId);
+        const resp = await api.route(state.startZoneId, toZoneId, state.preferElevator);
         renderRoute(resp);
     } catch (e) {
         showPanel(`<h2>Не удалось построить маршрут</h2><p>${escapeHtml(e.message)}</p>`);
@@ -197,12 +231,12 @@ function renderRoute(resp) {
     // Камера на середину маршрута
     const mid = resp.steps[Math.floor(resp.steps.length / 2)];
     const c = zoneCenterWorld(mid.zoneId);
-    flyTo(c, 50, c.y + 28);
+    flyTo(c, 58, c.y + 24);
 
     const stepsHtml = resp.steps.map((s) => `
         <li class="step">
             <div class="step__text">${escapeHtml(s.instruction)}</div>
-            <div class="step__floor">${escapeHtml(ZONE_LABEL[s.zoneType] || '')} · ${s.floorNumber}-й этаж</div>
+            <div class="step__floor">${escapeHtml(ZONE_LABEL[s.zoneType] || '')} · ${fmtFloorLabel(s.floorNumber)}</div>
         </li>`).join('');
 
     showPanel(`
@@ -236,7 +270,7 @@ async function openAfisha(planMode) {
             ${planMode ? `<label class="event-card__check"><input type="checkbox" data-zone="${ev.zoneId}"></label>` : ''}
             <div class="event-card__type">${escapeHtml(EVENT_LABEL[ev.type] || ev.type)}</div>
             <div class="event-card__title">${escapeHtml(ev.title)}</div>
-            <div class="event-card__meta">${fmtDateTime(ev.startTime)} · ${escapeHtml(ev.zoneName)} · ${ev.floorNumber}-й этаж</div>
+            <div class="event-card__meta">${fmtDateTime(ev.startTime)} · ${escapeHtml(ev.zoneName)} · ${fmtFloorLabel(ev.floorNumber)}</div>
         </div>`).join('');
 
     showPanel(`
@@ -266,7 +300,7 @@ async function buildDayPlan() {
     const targets = [...state.plan];
     if (!targets.length) return;
     try {
-        const resp = await api.routeMulti(state.startZoneId, targets, true);
+        const resp = await api.routeMulti(state.startZoneId, targets, true, state.preferElevator);
         renderRoute(resp);
     } catch (e) {
         showPanel(`<h2>Не удалось построить план</h2><p>${escapeHtml(e.message)}</p>`);
@@ -280,6 +314,10 @@ function setMode(mode) {
     clearRoute();
     setPulse([]);
     state.plan.clear();
+
+    // Сценарий «С детьми» — по умолчанию лифт (коляски, маленькие дети).
+    // Остальные сценарии — лестница (быстрее для пешеходов, обзор здания).
+    setTransportMode(mode === 'kids');
 
     if (mode === 'first') {
         selectFloor(null);
@@ -317,7 +355,7 @@ async function buildGrandTour() {
     const exhibitions = allZoneData().filter((z) => z.type === 'EXHIBITION').map((z) => z.id);
     if (!exhibitions.length) return;
     try {
-        const resp = await api.routeMulti(state.startZoneId, exhibitions, true);
+        const resp = await api.routeMulti(state.startZoneId, exhibitions, true, state.preferElevator);
         renderRoute(resp);
         el.panelContent.insertAdjacentHTML('afterbegin',
             '<div class="muted">Рекомендованный обход всех выставочных залов</div>');
@@ -334,7 +372,7 @@ async function openKidsAfisha() {
         <div class="event-card" data-zone="${ev.zoneId}">
             <div class="event-card__type">${EVENT_LABEL[ev.type]}</div>
             <div class="event-card__title">${escapeHtml(ev.title)}</div>
-            <div class="event-card__meta">${fmtDateTime(ev.startTime)} · ${escapeHtml(ev.zoneName)} · ${ev.floorNumber}-й этаж</div>
+            <div class="event-card__meta">${fmtDateTime(ev.startTime)} · ${escapeHtml(ev.zoneName)} · ${fmtFloorLabel(ev.floorNumber)}</div>
         </div>`).join('');
     showPanel(`
         <span class="tag">С детьми</span>

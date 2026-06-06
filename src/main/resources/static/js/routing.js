@@ -27,11 +27,25 @@ export function drawRoute(steps) {
     clearRoute();
     if (!steps || steps.length < 2) return;
 
-    const pts = steps.map((s) => {
+    // Строим массив точек; при смене этажа добавляем два направляющих
+    // waypoint-а с теми же X,Z что у точки назначения — это заставляет
+    // CatmullRom идти строго вертикально через шахту лифта/лестниц.
+    const pts = [];
+    for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
         const p = zoneCenterWorld(s.zoneId);
         p.y += 0.8;
-        return p;
-    });
+
+        if (i > 0 && steps[i].floorNumber !== steps[i - 1].floorNumber) {
+            const prev = pts[pts.length - 1];
+            // Точка «начало подъёма»: там же по XZ, чуть выше предыдущей
+            pts.push(new THREE.Vector3(p.x, prev.y + 1.2, p.z));
+            // Точка «перед посадкой»: там же по XZ, чуть ниже текущей
+            pts.push(new THREE.Vector3(p.x, p.y - 1.2, p.z));
+        }
+
+        pts.push(p);
+    }
 
     curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.4);
 

@@ -10,6 +10,7 @@ public enum ZoneType {
     EXHIBITION,
     CINEMA,
     LECTURE,
+    WORKSHOP,
     SHOP,
     CAFE,
     PUBLIC,

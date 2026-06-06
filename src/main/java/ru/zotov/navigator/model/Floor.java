@@ -35,9 +35,9 @@ public class Floor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Номер этажа (1..5). */
+    /** Номер этажа (1, 1.5, 2, 2.5, 3, 4). Дробные значения — антресольные уровни-пристройки. */
     @Column(nullable = false)
-    private int number;
+    private double number;
 
     /** Отображаемое название, например «Первый этаж — Форум». */
     @Column(nullable = false)

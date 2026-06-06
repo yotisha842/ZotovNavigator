@@ -26,7 +26,7 @@ public class EventDto {
     private String posterUrl;
     private Long zoneId;
     private String zoneName;
-    private int floorNumber;
+    private double floorNumber;
 
     public static EventDto from(Event event) {
         return EventDto.builder()

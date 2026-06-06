@@ -18,7 +18,7 @@ import java.util.List;
 public class FloorDto {
 
     private Long id;
-    private int number;
+    private double number;
     private String name;
     private double heightMeters;
     private double radiusMeters;

@@ -19,7 +19,7 @@ public class ZoneDto {
     private String name;
     private String type;
     private Long floorId;
-    private int floorNumber;
+    private double floorNumber;
     private double angleStart;
     private double angleEnd;
     private double radiusInner;

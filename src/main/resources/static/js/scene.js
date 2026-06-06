@@ -19,7 +19,7 @@ const container = document.getElementById('sceneContainer');
 
 export const camera = new THREE.PerspectiveCamera(
     50, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(42, 34, 42);
+camera.position.set(68, 52, 68);
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -31,9 +31,9 @@ container.appendChild(renderer.domElement);
 export const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
-controls.target.set(0, 9, 0);
+controls.target.set(0, 12, 0);
 controls.minDistance = 20;
-controls.maxDistance = 120;
+controls.maxDistance = 180;
 controls.maxPolarAngle = Math.PI / 2.05; // не уходим под пол
 
 // Освещение (мягкий дневной свет под светлую тему)
@@ -42,10 +42,10 @@ const key = new THREE.DirectionalLight(0xffffff, 1.0);
 key.position.set(30, 55, 25);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
-key.shadow.camera.left = -40;
-key.shadow.camera.right = 40;
-key.shadow.camera.top = 40;
-key.shadow.camera.bottom = -40;
+key.shadow.camera.left = -55;
+key.shadow.camera.right = 55;
+key.shadow.camera.top = 55;
+key.shadow.camera.bottom = -55;
 key.shadow.bias = -0.0005;
 scene.add(key);
 const fill = new THREE.DirectionalLight(0xffffff, 0.35);
@@ -54,7 +54,7 @@ scene.add(fill);
 
 // Площадка-основание (светлая)
 const groundMat = new THREE.MeshStandardMaterial({ color: 0xE6E3DB, roughness: 1, metalness: 0 });
-const ground = new THREE.Mesh(new THREE.CircleGeometry(70, 64), groundMat);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(90, 64), groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.05;
 ground.receiveShadow = true;
@@ -62,11 +62,28 @@ scene.add(ground);
 
 export const raycaster = new THREE.Raycaster();
 
+let _panelOffset = 0;
+
+export function setCameraViewOffset(panelWidth) {
+    _panelOffset = panelWidth;
+    const w = container.clientWidth, h = container.clientHeight;
+    if (panelWidth > 0) {
+        camera.setViewOffset(w, h, panelWidth / 2, 0, w, h);
+    } else {
+        camera.clearViewOffset();
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+    }
+}
+
 function onResize() {
     const w = container.clientWidth, h = container.clientHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+    if (_panelOffset > 0) {
+        camera.setViewOffset(w, h, _panelOffset / 2, 0, w, h);
+    }
 }
 window.addEventListener('resize', onResize);
 

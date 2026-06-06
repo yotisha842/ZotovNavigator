@@ -180,6 +180,8 @@ body {
     width: 4px; background: var(--red);
 }
 .floor-btn--all { flex: 0 0 48px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--red); }
+.floor-btn--mezzanine { font-size: 13px; color: var(--gray); border-left: 3px solid var(--line); }
+.floor-btn--mezzanine.is-active { color: #fff; border-left-color: var(--red); }
 
 /* Сцена */
 .scene { position: relative; overflow: hidden; background: var(--bg); }
@@ -310,6 +312,54 @@ body {
 }
 .mode:hover { color: var(--ink); border-color: var(--gray); }
 .mode.is-active { color: #fff; background: var(--red); border-color: var(--red); }
+
+/* ---------- ПЕРЕКЛЮЧАТЕЛЬ ТРАНСПОРТА ---------- */
+.transport-toggle {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-sm);
+    z-index: 15;
+    overflow: hidden;
+}
+.transport-toggle__label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gray);
+    padding: 0 10px;
+    white-space: nowrap;
+    border-right: 1px solid var(--line);
+    font-weight: 600;
+    font-family: var(--font);
+}
+.transport-btn {
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 9px 14px;
+    border: none;
+    border-right: 1px solid var(--line);
+    background: transparent;
+    color: var(--gray);
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+}
+.transport-btn:last-child { border-right: none; }
+.transport-btn:hover { background: var(--surface-2); color: var(--ink); }
+.transport-btn.is-active[data-transport="stairs"] {
+    background: #C8941A;
+    color: #fff;
+}
+.transport-btn.is-active[data-transport="elevator"] {
+    background: #3A7BAD;
+    color: #fff;
+}
 
 /* ---------- АДАПТИВ ---------- */
 @media (max-width: 720px) {
