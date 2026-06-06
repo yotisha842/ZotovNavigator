@@ -7,17 +7,17 @@ import { scene, COLORS } from './scene.js';
 const deg2rad = (d) => (d * Math.PI) / 180;
 
 // Абсолютные Y-координаты оснований уровней (в метрах).
-// Антресоли (1.5, 2.5) размещены в зазорах между основными цилиндрами:
-//   Эт.1:  y=0–4   → зазор 3 м → Антр.1½: y=4.5–6.5 → Эт.2: y=7–11
-//   Эт.2:  y=7–11  → зазор 3 м → Пер.2½:  y=11.5–13.5 → Эт.3: y=14–18
-//   Эт.3:  y=14–18 → зазор 3 м (без пристройки) → Эт.4: y=21–25
+// Увеличенные зазоры между этажами (~8 м) для наглядности маршрутов:
+//   Эт.1:  y=0–4   → зазор 8 м → Антр.1½: y=8–10  → Эт.2: y=12–16
+//   Эт.2:  y=12–16 → зазор 8 м → Пер.2½:  y=20–22 → Эт.3: y=24–28
+//   Эт.3:  y=24–28 → зазор 10 м (без пристройки)  → Эт.4: y=34–38
 const FLOOR_BASE_Y = new Map([
     [1,   0],
-    [1.5, 4.5],
-    [2,   7],
-    [2.5, 11.5],
-    [3,   14],
-    [4,   21],
+    [1.5, 8],
+    [2,   12],
+    [2.5, 20],
+    [3,   24],
+    [4,   34],
 ]);
 
 // Угловой сектор и радиусы пристройки (башня лестницы + антресоль).
@@ -78,7 +78,7 @@ export function buildBuilding(floors, zones) {
             // Диск-перекрытие
             const disk = new THREE.Mesh(
                 new THREE.CircleGeometry(radius, 64),
-                new THREE.MeshStandardMaterial({ color: 0xFBFAF6, roughness: 0.95, metalness: 0 })
+                new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.95, metalness: 0 })
             );
             disk.rotation.x = -Math.PI / 2;
             disk.position.y = baseY;
@@ -126,6 +126,9 @@ export function buildBuilding(floors, zones) {
     // Главный вход на 1-м этаже
     addMainEntrance(floorBaseY(1));
 
+    // Стойка ресепшн на 1-м этаже (~215°, внутри зоны магазина)
+    addReceptionDesk(floorBaseY(1));
+
     setFloorFocus(null);
 }
 
@@ -164,7 +167,7 @@ function addAnnexForFloor(group, floorNumber, baseY, height, buildingRadius) {
     const walls = new THREE.Mesh(
         new THREE.BoxGeometry(depth, height, width),
         new THREE.MeshStandardMaterial({
-            color: 0xD2CFC7, transparent: true, opacity: 0.10,
+            color: 0xE0E0E0, transparent: true, opacity: 0.10,
             side: THREE.DoubleSide, metalness: 0.1, roughness: 0.9,
         })
     );
@@ -175,7 +178,7 @@ function addAnnexForFloor(group, floorNumber, baseY, height, buildingRadius) {
     // Пол
     const floorPlate = new THREE.Mesh(
         new THREE.PlaneGeometry(depth, width),
-        new THREE.MeshStandardMaterial({ color: 0xF4F2EC, roughness: 0.95, metalness: 0 })
+        new THREE.MeshStandardMaterial({ color: 0xF5F5F5, roughness: 0.95, metalness: 0 })
     );
     floorPlate.rotation.x = -Math.PI / 2;
     floorPlate.position.set(centerX, baseY + 0.01, 0);
@@ -415,13 +418,13 @@ function addMainEntrance(baseY) {
     const rotY = Math.atan2(ox, oz);
 
     const concreteMat = new THREE.MeshStandardMaterial({
-        color: 0xC8C3B8, roughness: 0.88, metalness: 0,
+        color: 0xCCCCCC, roughness: 0.88, metalness: 0,
     });
     const frameMat = new THREE.MeshStandardMaterial({
         color: 0x1A1A1A, roughness: 0.5, metalness: 0.55,
     });
     const accentMat = new THREE.MeshStandardMaterial({
-        color: 0xE63329, roughness: 0.4, metalness: 0.2,
+        color: 0xFF0068, roughness: 0.4, metalness: 0.2,
     });
     const glassMat = new THREE.MeshStandardMaterial({
         color: 0xB8CCE0, transparent: true, opacity: 0.22,
@@ -551,6 +554,69 @@ function addMainEntrance(baseY) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Стойка ресепшн (1-й этаж, ~215°, внутри кольцевой галереи)
+// ---------------------------------------------------------------------------
+
+function addReceptionDesk(baseY) {
+    const ang = deg2rad(215);
+    const r   = 11;
+
+    // Радиальный вектор от центра наружу
+    const ox = Math.cos(ang);
+    const oz = -Math.sin(ang);
+
+    // Центр стойки в мире
+    const cx = ox * r;
+    const cz = oz * r;
+
+    // Стойка ориентирована по касательной; rotY — чтобы длинная сторона шла вдоль окружности
+    const rotY = Math.atan2(ox, oz);
+
+    const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0xE8E4DC, roughness: 0.75, metalness: 0.05,
+    });
+    const topMat = new THREE.MeshStandardMaterial({
+        color: 0x1A1A1A, roughness: 0.45, metalness: 0.35,
+    });
+    const accentMat = new THREE.MeshStandardMaterial({
+        color: 0xE63329, roughness: 0.4, metalness: 0.15,
+    });
+
+    // Основной корпус стойки
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 1.05, 0.75),
+        bodyMat,
+    );
+    body.position.set(cx, baseY + 0.525, cz);
+    body.rotation.y = rotY;
+    body.castShadow = true;
+    building.add(body);
+
+    // Тёмная столешница
+    const top = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 0.07, 0.75),
+        topMat,
+    );
+    top.position.set(cx, baseY + 1.085, cz);
+    top.rotation.y = rotY;
+    building.add(top);
+
+    // Красная акцентная полоска по фасаду (конструктивизм)
+    const faceOffset = 0.76 / 2 + 0.01;
+    const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 0.09, 0.04),
+        accentMat,
+    );
+    stripe.position.set(
+        cx - ox * faceOffset,
+        baseY + 0.72,
+        cz + oz * faceOffset,
+    );
+    stripe.rotation.y = rotY;
+    building.add(stripe);
+}
+
 function clear() {
     building.clear();
     floorGroups.clear();
@@ -605,12 +671,35 @@ export function setFloorFocus(number) {
 }
 
 /**
+ * Подсветить этажи, задействованные в маршруте.
+ * floorNumbersSet — Set<number> с номерами «активных» этажей;
+ * null — сброс эффекта (все этажи равноправны).
+ */
+export function setRouteFloors(floorNumbersSet) {
+    for (const [num, group] of floorGroups) {
+        const active = floorNumbersSet == null || floorNumbersSet.has(num);
+        group.traverse((obj) => {
+            if (!obj.isMesh) return;
+            if (obj.userData.zoneId != null) {
+                obj.material.opacity = active ? 0.95 : 0.12;
+                if (!active && obj.material.emissive) {
+                    obj.material.emissive.setHex(0x000000);
+                    obj.material.emissiveIntensity = 0;
+                }
+            } else if (obj.userData.isShell) {
+                obj.material.opacity = active ? 0.10 : 0.02;
+            }
+        });
+    }
+}
+
+/**
  * Подсветить набор зон (Set из id). null — снять подсветку.
  */
 export function highlightZones(idSet) {
     for (const [id, e] of zoneIndex) {
         const on = idSet && idSet.has(id);
-        e.mesh.material.emissive.setHex(on ? 0xE63329 : 0x000000);
+        e.mesh.material.emissive.setHex(on ? 0xFF0068 : 0x000000);
         e.mesh.material.emissiveIntensity = on ? 0.45 : 0;
         e.mesh.material.opacity = idSet ? (on ? 0.98 : 0.4) : 0.9;
     }

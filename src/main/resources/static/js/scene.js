@@ -3,12 +3,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export const COLORS = {
-    bg: 0xEFEDE7,     // тёплый светлый фон (как на сайте Центра)
-    paper: 0xF6F4EE,
-    ink: 0x141414,
+    bg: 0xF0F0F0,
+    paper: 0xFFFFFF,
+    ink: 0x000000,
     white: 0xFFFFFF,
-    red: 0xE63329,
-    gray: 0x8C8C8C,
+    red: 0xFF0068,    // фирменная маджента centrezotov.ru
+    gray: 0xA5A5A5,
 };
 
 export const scene = new THREE.Scene();
@@ -19,7 +19,7 @@ const container = document.getElementById('sceneContainer');
 
 export const camera = new THREE.PerspectiveCamera(
     50, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(68, 52, 68);
+camera.position.set(85, 72, 85);
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -31,7 +31,7 @@ container.appendChild(renderer.domElement);
 export const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
-controls.target.set(0, 12, 0);
+controls.target.set(0, 18, 0);
 controls.minDistance = 20;
 controls.maxDistance = 180;
 controls.maxPolarAngle = Math.PI / 2.05; // не уходим под пол
@@ -53,7 +53,7 @@ fill.position.set(-30, 20, -20);
 scene.add(fill);
 
 // Площадка-основание (светлая)
-const groundMat = new THREE.MeshStandardMaterial({ color: 0xE6E3DB, roughness: 1, metalness: 0 });
+const groundMat = new THREE.MeshStandardMaterial({ color: 0xE8E8E8, roughness: 1, metalness: 0 });
 const ground = new THREE.Mesh(new THREE.CircleGeometry(90, 64), groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.05;
