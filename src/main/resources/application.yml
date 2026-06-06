@@ -29,3 +29,7 @@ spring:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+gigachat:
+  auth-token: MDE5ZTRmZmYtNGQ1Yy03ZjEwLWIxNDQtOWI0MGNhZjg4NGFkOjY4NTg4Y2IwLWY1MzYtNGM1NS1iMmExLTNlOTZjNjk0YzY1OQ==
+  scope: GIGACHAT_API_PERS

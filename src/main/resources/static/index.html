@@ -35,8 +35,14 @@
             <div id="searchResults" class="search__results" hidden></div>
         </div>
         <div class="header__actions">
-            <button id="afishaToggle" class="btn btn--ghost">Афиша</button>
-            <button id="helpToggle" class="btn btn--icon" title="Подсказка">?</button>
+            <button class="btn btn--ghost events-menu-btn" id="eventsMenuToggle">
+                Мероприятия <span class="events-menu-arrow">▾</span>
+            </button>
+            <button class="btn btn--ghost" id="chatHeaderBtn" title="ИИ-ассистент">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>ИИ-ассистент
+            </button>
         </div>
     </header>
 
@@ -45,16 +51,25 @@
         <!-- Переключатель этажей -->
         <nav class="floors" id="floorSwitcher" aria-label="Этажи"></nav>
 
+        <!-- Переключатель лестница/лифт -->
+        <div id="transportToggle" class="transport-toggle">
+            <button class="transport-btn is-active" data-transport="stairs" title="Лестница">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 20 4 14 10 14 10 8 16 8 16 4"/>
+                </svg>
+            </button>
+            <button class="transport-btn" data-transport="elevator" title="Лифт">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="2"/>
+                    <path d="M9 10l3-3 3 3M9 14l3 3 3-3"/>
+                </svg>
+            </button>
+        </div>
+
         <!-- 3D-сцена -->
         <div id="sceneContainer" class="scene">
             <div id="tooltip" class="tooltip" hidden></div>
             <div id="loading" class="loading">Загрузка модели здания…</div>
-            <!-- Переключатель способа перемещения между этажами -->
-            <div id="transportToggle" class="transport-toggle">
-                <span class="transport-toggle__label">Подъём</span>
-                <button class="transport-btn is-active" data-transport="stairs">Лестница</button>
-                <button class="transport-btn" data-transport="elevator">Лифт</button>
-            </div>
         </div>
 
         <!-- Правая панель: детали зоны / маршрут / афиша -->

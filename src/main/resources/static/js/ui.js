@@ -25,21 +25,32 @@ const el = {
     floorSwitcher: document.getElementById('floorSwitcher'),
     searchInput: document.getElementById('searchInput'),
     searchResults: document.getElementById('searchResults'),
-    afishaToggle: document.getElementById('afishaToggle'),
-    helpToggle: document.getElementById('helpToggle'),
+    eventsMenuToggle: document.getElementById('eventsMenuToggle'),
+    chatHeaderBtn: document.getElementById('chatHeaderBtn'),
     modeSwitcher: document.getElementById('modeSwitcher'),
     tooltip: document.getElementById('tooltip'),
     transportToggle: document.getElementById('transportToggle'),
 };
 
+// Состояние флипа панели
+const flip = {
+    mode: 'closed',           // 'closed' | 'events' | 'categories'
+    activeCategory: null,     // последняя выбранная категория
+    openedViaCategory: false, // текущий events-вид открыт через выбор категории
+};
+
 const state = {
     floors: [],
     startZoneId: null,        // «Вы здесь»
+    defaultStartZoneId: null, // вход по умолчанию — для сброса крестиком
     selectedFloor: null,
     plan: new Set(),          // zoneId для плана дня
     planMode: false,
     preferElevator: false,    // false = лестница (по умолч.), true = лифт
 };
+
+// zoneId → Event[] — заполняется при инициализации из main.js
+let _eventsCache = new Map();
 
 function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -68,26 +79,62 @@ function fmtDateTime(iso) {
     }).format(d);
 }
 
+function fmtTime(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDateRange(startIso, endIso) {
+    if (!startIso) return '';
+    const s = new Date(startIso);
+    const e = endIso ? new Date(endIso) : null;
+    const fmt = (d) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(d);
+    const diffDays = e ? (e - s) / 86400000 : 0;
+    if (diffDays > 1 && e) return `${fmt(s)} — ${fmt(e)}`;
+    return new Intl.DateTimeFormat('ru-RU', {
+        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+    }).format(s);
+}
+
 // ---------------------------------------------------------------------------
 // Инициализация
 // ---------------------------------------------------------------------------
-export function initUi(floors, zones) {
+export function initUi(floors, zones, eventsMap = new Map()) {
+    _eventsCache = eventsMap;
     state.floors = floors;
     const entrance = zones.find((z) => z.type === 'ENTRANCE') || zones[0];
     state.startZoneId = entrance ? entrance.id : null;
+    state.defaultStartZoneId = state.startZoneId;
 
     buildFloorSwitcher(floors);
     wireEvents();
-    setMode('first');
+
+    // Снимаем дефолтный is-active с кнопок режима — режим не выбран на старте
+    el.modeSwitcher.querySelectorAll('.mode').forEach((b) => b.classList.remove('is-active'));
+    selectFloor(null);
+
+    // По умолчанию открываем «Ближайшие события»
+    flip.activeCategory = 'all';
+    openAfisha(false, 'all').then(() => { flip.openedViaCategory = true; });
 }
 
 function buildFloorSwitcher(floors) {
     el.floorSwitcher.innerHTML = '';
-    const all = document.createElement('button');
-    all.className = 'floor-btn floor-btn--all is-active';
-    all.textContent = 'Все';
-    all.onclick = () => selectFloor(null);
-    el.floorSwitcher.appendChild(all);
+
+    const iconBtn = document.createElement('button');
+    iconBtn.className = 'floors__icon-btn is-active';
+    iconBtn.title = 'Все этажи';
+    iconBtn.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+    </svg>`;
+    iconBtn.onclick = () => selectFloor(null);
+    el.floorSwitcher.appendChild(iconBtn);
+
+    const sep = document.createElement('div');
+    sep.className = 'floors__sep';
+    el.floorSwitcher.appendChild(sep);
 
     [...floors].sort((a, b) => b.number - a.number).forEach((f) => {
         const b = document.createElement('button');
@@ -101,10 +148,11 @@ function buildFloorSwitcher(floors) {
 }
 
 function setActiveFloorBtn(number) {
+    const iconBtn = el.floorSwitcher.querySelector('.floors__icon-btn');
+    if (iconBtn) iconBtn.classList.toggle('is-active', number == null);
+
     el.floorSwitcher.querySelectorAll('.floor-btn').forEach((b) => {
-        const isAll = b.classList.contains('floor-btn--all');
-        const match = isAll ? number == null : Number(b.dataset.floor) === number;
-        b.classList.toggle('is-active', match);
+        b.classList.toggle('is-active', Number(b.dataset.floor) === number);
     });
 }
 
@@ -130,9 +178,29 @@ function setTransportMode(preferElevator) {
 }
 
 function wireEvents() {
-    el.panelClose.onclick = hidePanel;
-    el.afishaToggle.onclick = () => openAfisha(false);
-    el.helpToggle.onclick = showHelp;
+    el.panelClose.onclick = () => {
+        if (flip.mode === 'chat') {
+            // Крестик в чате → сбросить маршрут, вернуться к афише
+            el.panel.classList.remove('panel--chat');
+            el.chatHeaderBtn.classList.remove('is-active');
+            clearRoute();
+            highlightZones(null);
+            setPulse([]);
+            flipOut().then(() => openAfisha(false, flip.activeCategory ?? 'all'));
+            flip.mode = 'events';
+            flip.openedViaCategory = false;
+        } else if (flip.mode === 'categories') {
+            // Крестик в списке категорий → вернуться к последней категории
+            selectCategory(flip.activeCategory ?? 'all');
+        } else if (flip.mode === 'events' && flip.openedViaCategory) {
+            // Крестик в событиях категории → вернуться к списку категорий
+            openEventsMenu();
+        } else {
+            hidePanel();
+        }
+    };
+
+    el.eventsMenuToggle.onclick = openEventsMenu;
 
     el.transportToggle.querySelectorAll('.transport-btn').forEach((btn) => {
         btn.onclick = () => setTransportMode(btn.dataset.transport === 'elevator');
@@ -161,21 +229,148 @@ function wireEvents() {
 }
 
 // ---------------------------------------------------------------------------
+// Флип панели
+// ---------------------------------------------------------------------------
+function flipOut() {
+    return new Promise((resolve) => {
+        el.panelContent.classList.add('flip-out');
+        el.panelContent.addEventListener('animationend', () => {
+            el.panelContent.classList.remove('flip-out');
+            resolve();
+        }, { once: true });
+    });
+}
+
+function flipIn() {
+    el.panelContent.classList.add('flip-in');
+    el.panelContent.addEventListener('animationend', () => {
+        el.panelContent.classList.remove('flip-in');
+    }, { once: true });
+}
+
+function renderCategoryList() {
+    const items = [
+        { key: 'all',        label: 'Ближайшие события' },
+        { key: 'EXHIBITION', label: 'Выставки' },
+        { key: 'LECTURE',    label: 'Экскурсии' },
+        { key: 'OTHER',      label: 'События' },
+        { key: 'FILM',       label: 'Кино' },
+        { key: 'CONCERT',    label: 'Театр' },
+        { key: 'WORKSHOP',   label: 'Детям' },
+    ];
+    const btns = items.map((it) => `
+        <button class="category-item${flip.activeCategory === it.key ? ' is-active' : ''}" data-cat="${it.key}">
+            ${escapeHtml(it.label)}
+        </button>`).join('');
+    el.panelContent.innerHTML = `
+        <div class="category-list">
+            <div class="category-list__title">Категории</div>
+            ${btns}
+        </div>`;
+    el.panelContent.querySelectorAll('.category-item').forEach((btn) => {
+        btn.onclick = () => selectCategory(btn.dataset.cat);
+    });
+}
+
+function openEventsMenu() {
+    if (flip.mode === 'categories') return;
+    el.eventsMenuToggle.classList.add('is-active');
+
+    if (flip.mode === 'closed') {
+        el.panel.hidden = false;
+        setCameraViewOffset(el.panel.offsetWidth);
+        renderCategoryList();
+        flipIn();
+        flip.mode = 'categories';
+    } else {
+        flip.mode = 'categories';
+        flipOut().then(() => { renderCategoryList(); flipIn(); });
+    }
+}
+
+async function selectCategory(cat) {
+    flip.activeCategory = cat;
+    el.eventsMenuToggle.classList.remove('is-active');
+    await flipOut();
+    el.panelContent.innerHTML = `
+        <span class="tag">${escapeHtml(CATEGORY_LABEL[cat] || 'Мероприятия')}</span>
+        <h2>${escapeHtml(CATEGORY_LABEL[cat] || 'Мероприятия')}</h2>
+        <div class="muted">Загрузка…</div>`;
+    flip.mode = 'events';
+    flipIn();
+    await openAfisha(false, cat);
+    flip.openedViaCategory = true;
+}
+
+// ---------------------------------------------------------------------------
 // Панель
 // ---------------------------------------------------------------------------
 function showPanel(html) {
     el.panelContent.innerHTML = html;
     el.panel.hidden = false;
     setCameraViewOffset(el.panel.offsetWidth);
+    flip.mode = 'events';
+    flip.openedViaCategory = false; // переопределяется в selectCategory
+}
+
+// ---------------------------------------------------------------------------
+// Маршрут из чата — рисует в 3D, не трогает чат-панель
+// ---------------------------------------------------------------------------
+export function getStartZoneId() { return state.startZoneId; }
+
+export async function drawRouteOnly(toZoneId, fromZoneIdOverride = null) {
+    const fromZoneId = fromZoneIdOverride ?? state.startZoneId ?? 1;
+    const resp = await api.route(fromZoneId, toZoneId, state.preferElevator);
+    drawRoute(resp.steps);
+    setFloorFocus(null);
+    setActiveFloorBtn(null);
+    state.selectedFloor = null;
+    highlightZones(new Set(resp.steps.map((s) => s.zoneId)));
+    const mid = resp.steps[Math.floor(resp.steps.length / 2)];
+    const c = zoneCenterWorld(mid.zoneId);
+    flyTo(c, 58, c.y + 24);
+    return resp;
 }
 
 // Закрытие панели = полный сброс: убираем маршрут и подсветку.
 function hidePanel() {
     el.panel.hidden = true;
+    el.panel.classList.remove('panel--chat');
     setCameraViewOffset(0);
     clearRoute();
     highlightZones(null);
     setPulse([]);
+    flip.mode = 'closed';
+    flip.activeCategory = null;
+    flip.openedViaCategory = false;
+    el.eventsMenuToggle.classList.remove('is-active');
+    el.chatHeaderBtn.classList.remove('is-active');
+}
+
+// ---------------------------------------------------------------------------
+// Чат-панель (вызывается из chat.js)
+// ---------------------------------------------------------------------------
+export function openChatPanel(renderFn) {
+    if (flip.mode === 'chat') return;
+
+    el.eventsMenuToggle.classList.remove('is-active');
+    el.chatHeaderBtn.classList.add('is-active');
+
+    const doRender = () => {
+        el.panel.classList.add('panel--chat');
+        renderFn(el.panelContent);
+        flipIn();
+        flip.mode = 'chat';
+        flip.openedViaCategory = false;
+    };
+
+    if (flip.mode === 'closed') {
+        el.panel.hidden = false;
+        setCameraViewOffset(el.panel.offsetWidth);
+        doRender();
+    } else {
+        flipOut().then(doRender);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -210,28 +405,109 @@ async function appendRecommendations(zoneType) {
 export function showZone(zoneId) {
     const z = getZoneData(zoneId);
     if (!z) return;
-    // Не прячем другие этажи — иначе остальные зоны нельзя выбрать.
-    // Просто подсвечиваем выбранную и подлетаем к ней камерой.
     highlightZones(new Set([zoneId]));
     setPulse([zoneId]);
     const c = zoneCenterWorld(zoneId);
     flyTo(c, 46, c.y + 22);
 
     const isStart = state.startZoneId === zoneId;
+    const canReset = isStart && state.startZoneId !== state.defaultStartZoneId;
+
+    const zoneEvents = _eventsCache.get(zoneId) || [];
+    const now = new Date();
+
+    let mainHtml;
+
+    if (z.type === 'CINEMA') {
+        // Кинозал: показываем расписание сеансов на сегодня (start >= now, тот же день)
+        const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+        const todayFilms = zoneEvents.filter((ev) => {
+            const s = new Date(ev.startTime);
+            return ev.type === 'FILM' && s >= now && s <= todayEnd;
+        });
+        const upcomingOther = zoneEvents.filter((ev) =>
+            ev.type !== 'FILM' && new Date(ev.startTime) >= now
+        ).slice(0, 3);
+
+        const filmsHtml = todayFilms.length
+            ? todayFilms.map((ev) => `
+                <div class="screening-item">
+                    <span class="screening-item__time">${fmtTime(ev.startTime)}</span>
+                    <span class="screening-item__title">${escapeHtml(ev.title)}</span>
+                </div>`).join('')
+            : '<div class="screening-empty">Сегодня сеансов больше нет</div>';
+
+        const otherHtml = upcomingOther.length ? `
+            <div class="zone-events">
+                <div class="zone-events__label">Предстоящие события</div>
+                ${upcomingOther.map((ev) => `
+                    <div class="zone-event-item">
+                        <div class="event-card__type">${escapeHtml(EVENT_LABEL[ev.type] || ev.type)}</div>
+                        <div class="event-card__title">${escapeHtml(ev.title)}</div>
+                        <div class="event-card__meta">${fmtDateRange(ev.startTime, ev.endTime)}</div>
+                    </div>`).join('')}
+            </div>` : '';
+
+        mainHtml = `
+            <span class="tag">Кинозал</span>
+            <h2>${escapeHtml(z.name)}</h2>
+            <div class="muted">${fmtFloorLabel(z.floorNumber)}</div>
+            <div class="cinema-schedule">
+                <div class="cinema-schedule__label">Сегодня</div>
+                ${filmsHtml}
+            </div>
+            ${otherHtml}`;
+
+    } else {
+        // Остальные зоны: показываем основное событие
+        const primary = zoneEvents[0];
+        const extra = zoneEvents.slice(1);
+
+        if (primary) {
+            const extraHtml = extra.length ? `
+                <div class="zone-events">
+                    <div class="zone-events__label">Также здесь</div>
+                    ${extra.map((ev) => `
+                        <div class="zone-event-item">
+                            <div class="event-card__type">${escapeHtml(EVENT_LABEL[ev.type] || ev.type)}</div>
+                            <div class="event-card__title">${escapeHtml(ev.title)}</div>
+                            <div class="event-card__meta">${fmtDateRange(ev.startTime, ev.endTime)}</div>
+                        </div>`).join('')}
+                </div>` : '';
+            mainHtml = `
+                <span class="tag">${escapeHtml(EVENT_LABEL[primary.type] || primary.type)}</span>
+                <h2>${escapeHtml(primary.title)}</h2>
+                <div class="muted">${fmtFloorLabel(z.floorNumber)} · ${fmtDateRange(primary.startTime, primary.endTime)}</div>
+                <p>${escapeHtml(primary.description || '')}</p>
+                ${extraHtml}`;
+        } else {
+            mainHtml = `
+                <span class="tag">${escapeHtml(ZONE_LABEL[z.type] || z.type)}</span>
+                <h2>${escapeHtml(z.name)}</h2>
+                <div class="muted">${fmtFloorLabel(z.floorNumber)}</div>
+                <p>${escapeHtml(z.description || '')}</p>`;
+        }
+    }
+
     showPanel(`
-        <span class="tag">${escapeHtml(ZONE_LABEL[z.type] || z.type)}</span>
-        <h2>${escapeHtml(z.name)}</h2>
-        <div class="muted">${fmtFloorLabel(z.floorNumber)}</div>
-        <p>${escapeHtml(z.description || '')}</p>
-        ${isStart ? '<div class="meta-row"><span>Вы здесь</span><b>✓ точка старта</b></div>' : ''}
+        ${mainHtml}
+        ${isStart ? `<div class="meta-row"><span>Вы здесь</span><b>✓ точка старта</b>${canReset ? '<button class="start-reset-btn" data-act="reset-start" title="Сбросить к входу">×</button>' : ''}</div>` : ''}
         <button class="btn btn--primary" data-act="route" data-id="${z.id}">Маршрут сюда</button>
-        <button class="btn btn--block" data-act="here" data-id="${z.id}">Я здесь — стартовать отсюда</button>
+        ${!isStart ? `<button class="btn btn--block" data-act="here" data-id="${z.id}">Я здесь — стартовать отсюда</button>` : ''}
     `);
     el.panelContent.querySelector('[data-act="route"]').onclick = () => buildRouteTo(zoneId);
-    el.panelContent.querySelector('[data-act="here"]').onclick = () => {
-        state.startZoneId = zoneId;
-        showZone(zoneId);
-    };
+    if (canReset) {
+        el.panelContent.querySelector('[data-act="reset-start"]').onclick = () => {
+            state.startZoneId = state.defaultStartZoneId;
+            showZone(zoneId);
+        };
+    }
+    if (!isStart) {
+        el.panelContent.querySelector('[data-act="here"]').onclick = () => {
+            state.startZoneId = zoneId;
+            showZone(zoneId);
+        };
+    }
     appendRecommendations(z.type);
 }
 
@@ -286,13 +562,52 @@ function renderRoute(resp) {
 // ---------------------------------------------------------------------------
 // Афиша / план дня
 // ---------------------------------------------------------------------------
-async function openAfisha(planMode) {
+const CATEGORY_LABEL = {
+    all: 'Ближайшие события',
+    EXHIBITION: 'Выставки',
+    LECTURE: 'Экскурсии',
+    OTHER: 'События',
+    FILM: 'Кино',
+    CONCERT: 'Театр',
+    WORKSHOP: 'Детям',
+};
+
+async function openAfisha(planMode, categoryFilter = 'all') {
     state.planMode = planMode;
     let events;
     try { events = await api.upcoming(); }
     catch (e) { showPanel(`<h2>Афиша недоступна</h2><p>${escapeHtml(e.message)}</p>`); return; }
 
-    if (!events.length) { showPanel('<span class="tag tag--muted">Афиша</span><h2>Пока нет ближайших событий</h2>'); return; }
+    if (categoryFilter && categoryFilter !== 'all') {
+        events = events.filter((ev) => ev.type === categoryFilter);
+    }
+
+    // Отдельные сеансы (короче 1 дня) — показываем max 1 на кинозал, max 2 суммарно
+    const isScreening = (ev) => ev.type === 'FILM' &&
+        (new Date(ev.endTime) - new Date(ev.startTime)) < 86400000;
+    const screenings = events.filter(isScreening);
+    const rest = events.filter((ev) => !isScreening(ev));
+    if (screenings.length) {
+        const seen = new Set();
+        const capped = screenings.filter((ev) => {
+            if (seen.has(ev.zoneId) || seen.size >= 2) return false;
+            seen.add(ev.zoneId);
+            return true;
+        });
+        events = [...rest, ...capped].sort((a, b) =>
+            new Date(a.startTime) - new Date(b.startTime));
+    }
+
+    const panelTag = planMode ? 'План дня' : (CATEGORY_LABEL[categoryFilter] || 'Мероприятия');
+    const panelTitle = planMode ? 'Соберите свой день' : (CATEGORY_LABEL[categoryFilter] || 'Мероприятия');
+    const panelHint = planMode
+        ? 'Отметьте события — построим оптимальный маршрут'
+        : 'Нажмите на событие, чтобы проложить маршрут';
+
+    if (!events.length) {
+        showPanel(`<span class="tag tag--muted">${escapeHtml(panelTag)}</span><h2>${escapeHtml(panelTitle)}</h2><div class="muted">Ближайших событий в этой категории нет</div>`);
+        return;
+    }
 
     const cards = events.map((ev) => `
         <div class="event-card" data-id="${ev.id}" data-zone="${ev.zoneId}">
@@ -303,9 +618,9 @@ async function openAfisha(planMode) {
         </div>`).join('');
 
     showPanel(`
-        <span class="tag">${planMode ? 'План дня' : 'Афиша'}</span>
-        <h2>${planMode ? 'Соберите свой день' : 'Ближайшие события'}</h2>
-        <div class="muted">${planMode ? 'Отметьте события — построим оптимальный маршрут' : 'Нажмите на событие, чтобы проложить маршрут'}</div>
+        <span class="tag">${escapeHtml(panelTag)}</span>
+        <h2>${escapeHtml(panelTitle)}</h2>
+        <div class="muted">${panelHint}</div>
         ${cards}
         ${planMode ? '<button class="btn btn--primary" data-act="plan">Построить план дня</button>' : ''}
     `);
@@ -412,16 +727,6 @@ async function openKidsAfisha() {
     el.panelContent.querySelectorAll('.event-card').forEach((card) => {
         card.onclick = () => buildRouteTo(Number(card.dataset.zone));
     });
-}
-
-function showHelp() {
-    showPanel(`
-        <span class="tag tag--muted">Подсказка</span>
-        <h2>Как пользоваться</h2>
-        <p><b>Вращайте</b> здание мышью, колесо — зум. Кликните по любой зоне, чтобы открыть описание и построить маршрут.</p>
-        <p>Слева — <b>переключатель этажей</b>. Сверху — <b>поиск</b> по зонам и событиям. Кнопка <b>«Афиша»</b> — ближайшие события.</p>
-        <p>Внизу — <b>режимы</b> под разные задачи: «Я впервые», «На мероприятие», «Всё посмотреть», «С детьми», «План дня».</p>
-    `);
 }
 
 // ---------------------------------------------------------------------------

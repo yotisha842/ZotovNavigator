@@ -175,52 +175,110 @@ body {
 /* ---------- ОСНОВНАЯ ОБЛАСТЬ ---------- */
 .stage {
     position: relative;
-    display: grid;
-    grid-template-columns: 64px 1fr;
     overflow: hidden;
 }
 
-/* Переключатель этажей */
+/* Плавающий переключатель этажей */
 .floors {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
+    align-items: center;
     background: var(--surface);
-    border-right: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--line);
+    padding: 6px 4px;
     z-index: 10;
+    gap: 1px;
 }
-.floor-btn {
-    flex: 1;
+
+/* Иконка «все этажи» */
+.floors__icon-btn {
+    width: 38px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray);
+    background: transparent;
     border: none;
-    border-bottom: 1px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: color .15s, background .15s;
+    margin-bottom: 2px;
+}
+.floors__icon-btn:hover { color: var(--ink); background: var(--surface-2); }
+.floors__icon-btn.is-active { color: var(--accent); }
+
+/* Разделитель */
+.floors__sep {
+    width: 22px;
+    height: 1px;
+    background: var(--line);
+    margin: 3px 0;
+}
+
+/* Кнопки этажей */
+.floor-btn {
+    width: 38px;
+    height: 34px;
+    border: none;
     background: transparent;
     color: var(--gray);
     font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: 16px;
+    font-weight: 600;
+    font-size: 14px;
     cursor: pointer;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: background .15s, color .15s;
-    position: relative;
+    line-height: 1;
 }
 .floor-btn:hover { color: var(--ink); background: var(--surface-2); }
-.floor-btn.is-active { color: var(--ink); background: var(--surface-2); }
-.floor-btn.is-active::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0;
-    width: 3px; background: var(--accent);
-}
-.floor-btn--all {
-    flex: 0 0 48px;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent);
-    font-family: var(--font-mono);
-}
-.floor-btn--mezzanine { font-size: 12px; color: var(--gray); border-left: 3px solid var(--line); }
-.floor-btn--mezzanine.is-active { color: var(--ink); border-left-color: var(--accent); }
+.floor-btn.is-active { color: var(--ink); background: var(--surface-2); font-weight: 700; }
+.floor-btn--mezzanine { font-size: 10px; height: 26px; }
+.floor-btn--mezzanine.is-active { color: var(--ink); }
 
-/* Сцена */
-.scene { position: relative; overflow: hidden; background: #F5F5F5; }
+/* Переключатель лестница/лифт */
+.transport-toggle {
+    position: absolute;
+    left: 12px;
+    bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--line);
+    padding: 4px;
+    z-index: 10;
+    gap: 2px;
+}
+.transport-btn {
+    width: 34px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    color: var(--gray);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color .15s, background .15s;
+}
+.transport-btn:hover { color: var(--ink); background: var(--surface-2); }
+.transport-btn.is-active { color: var(--accent); background: var(--surface-2); }
+
+/* Сцена — на всю площадь */
+.scene { position: absolute; inset: 0; overflow: hidden; background: #F5F5F5; }
 .scene canvas { display: block; }
 
 .tooltip {
@@ -295,6 +353,19 @@ body {
     padding-top: 1px;
 }
 
+.meta-row .start-reset-btn {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: var(--gray);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color .15s;
+}
+.meta-row .start-reset-btn:hover { color: var(--accent); }
+
 /* Шаги маршрута */
 .steps { list-style: none; counter-reset: step; margin-top: 6px; }
 .step {
@@ -347,6 +418,47 @@ body {
 .event-card__check { float: right; }
 .event-card input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
 
+/* ---------- Расписание кинозала ---------- */
+.cinema-schedule {
+    margin: 4px 0 16px;
+    border-left: 3px solid var(--accent);
+    padding-left: 12px;
+}
+.cinema-schedule__label {
+    font-family: var(--font-mono);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--accent); font-weight: 600; margin-bottom: 10px;
+}
+.screening-item {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line);
+}
+.screening-item:last-child { border-bottom: none; }
+.screening-item__time {
+    font-family: var(--font-mono); font-size: 14px; font-weight: 700;
+    color: var(--ink); white-space: nowrap; min-width: 42px;
+}
+.screening-item__title { font-size: 14px; color: var(--ink); line-height: 1.3; }
+.screening-empty { font-size: 13px; color: var(--gray); padding: 4px 0; }
+
+/* ---------- Блок событий внутри панели зоны ---------- */
+.zone-events {
+    margin: 4px 0 16px;
+    border-left: 3px solid var(--accent);
+    padding-left: 12px;
+}
+.zone-events__label {
+    font-family: var(--font-mono);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--accent); font-weight: 600; margin-bottom: 8px;
+}
+.zone-event-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+}
+.zone-event-item:last-child { border-bottom: none; }
+
 /* ---------- ФУТЕР: режимы ---------- */
 .modes {
     display: flex; align-items: center; gap: 8px;
@@ -370,56 +482,6 @@ body {
 }
 .mode:hover { color: var(--ink); border-color: var(--gray); }
 .mode.is-active { color: #fff; background: var(--accent); border-color: var(--accent); }
-
-/* ---------- ПЕРЕКЛЮЧАТЕЛЬ ТРАНСПОРТА ---------- */
-.transport-toggle {
-    position: absolute;
-    bottom: 16px;
-    left: 16px;
-    display: flex;
-    align-items: center;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow-sm);
-    z-index: 15;
-    overflow: hidden;
-}
-.transport-toggle__label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--gray);
-    padding: 0 10px;
-    white-space: nowrap;
-    border-right: 1px solid var(--line);
-    font-weight: 500;
-}
-.transport-btn {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 600;
-    padding: 9px 14px;
-    border: none;
-    border-right: 1px solid var(--line);
-    background: transparent;
-    color: var(--gray);
-    cursor: pointer;
-    transition: background .15s, color .15s;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-}
-.transport-btn:last-child { border-right: none; }
-.transport-btn:hover { background: var(--surface-2); color: var(--ink); }
-.transport-btn.is-active[data-transport="stairs"] {
-    background: #C8941A;
-    color: #fff;
-}
-.transport-btn.is-active[data-transport="elevator"] {
-    background: #3A7BAD;
-    color: #fff;
-}
 
 /* ---------- МАГАЗИН — РЕКОМЕНДАЦИИ ---------- */
 .shop-section {
@@ -473,6 +535,86 @@ body {
 }
 .shop-section__more:hover { text-decoration: underline; }
 
+/* ---------- КНОПКА МЕРОПРИЯТИЙ ---------- */
+.events-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.events-menu-btn.is-active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.events-menu-arrow {
+    font-size: 10px;
+    display: inline-block;
+    transition: transform .18s;
+    line-height: 1;
+}
+.events-menu-btn.is-active .events-menu-arrow { transform: rotate(180deg); }
+
+/* ---------- ФЛИП ПАНЕЛИ ---------- */
+@keyframes panelFlipOut {
+    0%   { transform: scaleX(1); opacity: 1; }
+    100% { transform: scaleX(0); opacity: 0; }
+}
+@keyframes panelFlipIn {
+    0%   { transform: scaleX(0); opacity: 0; }
+    100% { transform: scaleX(1); opacity: 1; }
+}
+.panel__content.flip-out {
+    transform-origin: center;
+    animation: panelFlipOut .16s ease-in forwards;
+}
+.panel__content.flip-in {
+    transform-origin: center;
+    animation: panelFlipIn .18s ease-out forwards;
+}
+
+/* ---------- СПИСОК КАТЕГОРИЙ В ПАНЕЛИ ---------- */
+.category-list__title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray);
+    margin-bottom: 4px;
+}
+.category-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 18px 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ink);
+    cursor: pointer;
+    text-align: left;
+    transition: color .12s, padding-left .15s;
+    line-height: 1.1;
+}
+.category-item::after {
+    content: '→';
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--gray);
+    flex-shrink: 0;
+    transition: color .12s, transform .12s;
+}
+.category-item:hover { color: var(--accent); padding-left: 8px; }
+.category-item:hover::after { color: var(--accent); transform: translateX(4px); }
+.category-item.is-active { color: var(--accent); }
+.category-item.is-active::after { color: var(--accent); }
+
 /* ---------- АДАПТИВ ---------- */
 @media (max-width: 720px) {
     :root { --header-h: 56px; }
@@ -482,7 +624,160 @@ body {
     .header { flex-wrap: wrap; height: auto; padding: 8px 14px; }
     #app { grid-template-rows: auto 1fr var(--footer-h); }
     .panel { width: 100%; }
-    .stage { grid-template-columns: 48px 1fr; }
+    .floors { left: 8px; }
 }
 
 [hidden] { display: none !important; }
+
+/* =====================================================================
+   ЧАТ — ИИ-ассистент GigaChat (рендерится внутри правой панели)
+   ===================================================================== */
+
+/* Правая панель в режиме чата */
+.panel--chat {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.panel--chat .panel__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Заголовок чата внутри панели */
+.chat-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 14px 50px 14px 16px; /* right pad для кнопки × */
+    background: #000;
+    color: rgba(255,255,255,0.85);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.chat-head em { color: var(--accent); font-style: normal; }
+
+/* FAQ-чипы */
+.chat-faq {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+}
+.chat-chip {
+    padding: 5px 11px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+    white-space: nowrap;
+}
+.chat-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(255,0,104,0.05);
+}
+
+/* Область сообщений */
+.chat-msgs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    scroll-behavior: smooth;
+}
+
+/* Пузырь сообщения */
+.chat-msg {
+    max-width: 86%;
+    padding: 9px 13px;
+    font-size: 14px;
+    line-height: 1.5;
+    border-radius: 2px;
+    word-break: break-word;
+}
+.chat-msg--user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: #fff;
+}
+.chat-msg--assistant {
+    align-self: flex-start;
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+}
+.chat-msg--typing {
+    color: var(--gray);
+    font-style: italic;
+}
+.chat-msg--route-hint {
+    align-self: stretch;
+    background: #f5f0ff;
+    border: 1px solid #d4b8ff;
+    color: #5a2d9e;
+    font-size: 13px;
+}
+.chat-msg--route-hint.chat-msg--route-ok {
+    background: #f0faf0;
+    border-color: #7dc87d;
+    color: #1a5c1a;
+}
+.chat-msg--route-hint.chat-msg--route-err {
+    background: #fff5f5;
+    border-color: #ffb3b3;
+    color: #7a1a1a;
+}
+
+/* Строка ввода */
+.chat-input-row {
+    display: flex;
+    align-items: center;
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+}
+.chat-input {
+    flex: 1;
+    height: 48px;
+    padding: 0 14px;
+    border: none;
+    outline: none;
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+}
+.chat-input::placeholder { color: var(--gray); }
+.chat-input:disabled { opacity: 0.5; }
+.chat-send {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    transition: background .12s;
+    flex-shrink: 0;
+}
+.chat-send:hover { background: var(--accent-dark); }

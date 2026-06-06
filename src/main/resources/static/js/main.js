@@ -4,18 +4,29 @@ import { api } from './api.js';
 import { camera, renderer, raycaster, onFrame, startLoop } from './scene.js';
 import { buildBuilding, getZoneMeshes, pulse } from './building.js';
 import { initUi, showZone, showTooltip, hideTooltip } from './ui.js';
+import { initChat } from './chat.js';
 
 const pointer = new THREE.Vector2();
 let hovered = null;
 let startTime = performance.now();
 
+// zoneId → Event[] (текущие и предстоящие события для каждой зоны)
+const eventsMap = new Map();
+
 async function boot() {
     const loading = document.getElementById('loading');
     try {
-        const floors = await api.floors();
-        const zones = await api.zones();
+        const [floors, zones, events] = await Promise.all([
+            api.floors(),
+            api.zones(),
+            api.upcoming().catch(() => []),
+        ]);
+        for (const ev of events) {
+            if (!eventsMap.has(ev.zoneId)) eventsMap.set(ev.zoneId, []);
+            eventsMap.get(ev.zoneId).push(ev);
+        }
         buildBuilding(floors, zones);
-        initUi(floors, zones);
+        initUi(floors, zones, eventsMap);
         loading.hidden = true;
     } catch (e) {
         loading.textContent = 'Ошибка загрузки данных: ' + e.message;
@@ -23,6 +34,7 @@ async function boot() {
     }
 
     setupPicking();
+    initChat();
     onFrame(() => pulse(0, (performance.now() - startTime) / 1000));
     startLoop();
 }
@@ -50,7 +62,10 @@ function setupPicking() {
         if (mesh && mesh.visible && mesh.material.opacity > 0.1) {
             hovered = mesh;
             canvas.style.cursor = 'pointer';
-            showTooltip(mesh.userData.name, event.clientX - rect.left, event.clientY - rect.top);
+            const zoneId = mesh.userData.zoneId;
+            const zoneEvents = eventsMap.get(zoneId);
+            const label = zoneEvents?.length ? zoneEvents[0].title : mesh.userData.name;
+            showTooltip(label, event.clientX - rect.left, event.clientY - rect.top);
         } else {
             hovered = null;
             canvas.style.cursor = 'default';

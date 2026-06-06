@@ -126,9 +126,6 @@ export function buildBuilding(floors, zones) {
     // Главный вход на 1-м этаже
     addMainEntrance(floorBaseY(1));
 
-    // Стойка ресепшн на 1-м этаже (~215°, внутри зоны магазина)
-    addReceptionDesk(floorBaseY(1));
-
     setFloorFocus(null);
 }
 
@@ -552,69 +549,6 @@ function addMainEntrance(baseY) {
         col.castShadow = true;
         building.add(col);
     }
-}
-
-// ---------------------------------------------------------------------------
-// Стойка ресепшн (1-й этаж, ~215°, внутри кольцевой галереи)
-// ---------------------------------------------------------------------------
-
-function addReceptionDesk(baseY) {
-    const ang = deg2rad(215);
-    const r   = 11;
-
-    // Радиальный вектор от центра наружу
-    const ox = Math.cos(ang);
-    const oz = -Math.sin(ang);
-
-    // Центр стойки в мире
-    const cx = ox * r;
-    const cz = oz * r;
-
-    // Стойка ориентирована по касательной; rotY — чтобы длинная сторона шла вдоль окружности
-    const rotY = Math.atan2(ox, oz);
-
-    const bodyMat = new THREE.MeshStandardMaterial({
-        color: 0xE8E4DC, roughness: 0.75, metalness: 0.05,
-    });
-    const topMat = new THREE.MeshStandardMaterial({
-        color: 0x1A1A1A, roughness: 0.45, metalness: 0.35,
-    });
-    const accentMat = new THREE.MeshStandardMaterial({
-        color: 0xE63329, roughness: 0.4, metalness: 0.15,
-    });
-
-    // Основной корпус стойки
-    const body = new THREE.Mesh(
-        new THREE.BoxGeometry(3.2, 1.05, 0.75),
-        bodyMat,
-    );
-    body.position.set(cx, baseY + 0.525, cz);
-    body.rotation.y = rotY;
-    body.castShadow = true;
-    building.add(body);
-
-    // Тёмная столешница
-    const top = new THREE.Mesh(
-        new THREE.BoxGeometry(3.2, 0.07, 0.75),
-        topMat,
-    );
-    top.position.set(cx, baseY + 1.085, cz);
-    top.rotation.y = rotY;
-    building.add(top);
-
-    // Красная акцентная полоска по фасаду (конструктивизм)
-    const faceOffset = 0.76 / 2 + 0.01;
-    const stripe = new THREE.Mesh(
-        new THREE.BoxGeometry(3.2, 0.09, 0.04),
-        accentMat,
-    );
-    stripe.position.set(
-        cx - ox * faceOffset,
-        baseY + 0.72,
-        cz + oz * faceOffset,
-    );
-    stripe.rotation.y = rotY;
-    building.add(stripe);
 }
 
 function clear() {
