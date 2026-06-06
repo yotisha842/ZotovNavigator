@@ -1,0 +1,325 @@
+/* =====================================================================
+   Зотов.Навигатор — светлая тема в стилистике Центра «Зотов».
+   Тёплый светлый фон, чёрный текст, красный акцент, конструктивистская геометрия.
+   ===================================================================== */
+
+:root {
+    --bg: #EFEDE7;        /* тёплый светлый фон */
+    --surface: #FFFFFF;
+    --surface-2: #F4F2EC;
+    --ink: #141414;       /* основной текст — почти чёрный */
+    --ink-soft: #595955;
+    --red: #E63329;       /* фирменный акцент */
+    --gray: #8C8C8C;
+    --line: #DBD7CE;
+
+    --font: 'Golos Text', system-ui, -apple-system, sans-serif;
+    --header-h: 64px;
+    --footer-h: 60px;
+    --shadow: 0 8px 30px rgba(20, 20, 20, 0.10);
+    --shadow-sm: 0 2px 10px rgba(20, 20, 20, 0.06);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--ink);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+#app {
+    display: grid;
+    grid-template-rows: var(--header-h) 1fr var(--footer-h);
+    height: 100vh;
+}
+
+/* ---------- ШАПКА ---------- */
+.header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 0 24px;
+    background: var(--surface);
+    border-bottom: 2px solid var(--red);
+    z-index: 20;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand__mark {
+    width: 22px; height: 22px;
+    background: var(--red);
+    border-radius: 50%;
+    position: relative;
+    flex: none;
+}
+.brand__mark::after {
+    content: '';
+    position: absolute; inset: 6px;
+    background: var(--surface);
+    border-radius: 50%;
+}
+.brand__name {
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    font-size: 18px;
+    color: var(--ink);
+}
+.brand__dot { color: var(--red); }
+
+.search { position: relative; flex: 1; max-width: 520px; margin: 0 auto; }
+.search__input {
+    width: 100%;
+    height: 40px;
+    padding: 0 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    outline: none;
+    transition: border-color .15s, background .15s;
+}
+.search__input::placeholder { color: var(--gray); }
+.search__input:focus { border-color: var(--red); background: var(--surface); }
+.search__results {
+    position: absolute;
+    top: 46px; left: 0; right: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    max-height: 340px;
+    overflow-y: auto;
+    z-index: 40;
+}
+.search__group-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gray);
+    padding: 10px 14px 4px;
+}
+.search__item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; gap: 10px;
+}
+.search__item:hover { background: var(--surface-2); }
+.search__item small { color: var(--gray); white-space: nowrap; }
+
+.header__actions { display: flex; gap: 10px; align-items: center; }
+
+/* ---------- КНОПКИ ---------- */
+.btn {
+    font-family: var(--font);
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+}
+.btn:hover { border-color: var(--red); color: var(--red); }
+.btn--ghost { background: transparent; }
+.btn--icon { width: 40px; padding: 0; font-weight: 700; }
+.btn--primary {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+    width: 100%;
+    padding: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.btn--primary:hover { background: #cf2c22; color: #fff; }
+.btn--block { width: 100%; margin-top: 8px; }
+.btn.is-active { background: var(--red); border-color: var(--red); color: #fff; }
+
+/* ---------- ОСНОВНАЯ ОБЛАСТЬ ---------- */
+.stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    overflow: hidden;
+}
+
+/* Переключатель этажей */
+.floors {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    z-index: 10;
+}
+.floor-btn {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+    color: var(--gray);
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    position: relative;
+}
+.floor-btn:hover { color: var(--ink); background: var(--surface-2); }
+.floor-btn.is-active { color: var(--ink); background: var(--surface-2); }
+.floor-btn.is-active::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--red);
+}
+.floor-btn--all { flex: 0 0 48px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--red); }
+
+/* Сцена */
+.scene { position: relative; overflow: hidden; background: var(--bg); }
+.scene canvas { display: block; }
+
+.tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--ink);
+    color: #fff;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    transform: translate(-50%, -140%);
+    white-space: nowrap;
+    z-index: 30;
+    box-shadow: var(--shadow-sm);
+}
+
+.loading {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gray);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 13px;
+}
+
+/* ---------- ПРАВАЯ ПАНЕЛЬ ---------- */
+.panel {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 380px;
+    max-width: 92vw;
+    background: var(--surface);
+    border-left: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    z-index: 25;
+    overflow-y: auto;
+    animation: slideIn .25s ease;
+}
+@keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+.panel__close {
+    position: absolute; top: 12px; right: 12px;
+    width: 34px; height: 34px;
+    background: var(--surface); border: 1px solid var(--line);
+    color: var(--ink); font-size: 22px; line-height: 1;
+    cursor: pointer; z-index: 2;
+}
+.panel__close:hover { border-color: var(--red); color: var(--red); }
+.panel__content { padding: 28px 24px; }
+
+.tag {
+    display: inline-block;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 4px 10px; margin-bottom: 14px;
+    background: var(--red); color: #fff; font-weight: 700;
+}
+.tag--muted { background: var(--gray); }
+.panel h2 { font-size: 24px; font-weight: 800; line-height: 1.15; margin-bottom: 6px; color: var(--ink); }
+.panel .muted { color: var(--gray); font-size: 13px; margin-bottom: 16px; }
+.panel p { color: var(--ink-soft); line-height: 1.55; margin-bottom: 18px; font-size: 14px; }
+
+.meta-row { display: flex; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+.meta-row span:first-child { color: var(--gray); min-width: 90px; }
+
+/* Шаги маршрута */
+.steps { list-style: none; counter-reset: step; margin-top: 6px; }
+.step {
+    position: relative;
+    padding: 12px 0 14px 40px;
+    border-left: 2px solid var(--line);
+    margin-left: 12px;
+}
+.step::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute; left: -14px; top: 10px;
+    width: 26px; height: 26px;
+    background: var(--surface); border: 2px solid var(--red);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--ink);
+}
+.step:last-child { border-left-color: transparent; }
+.step__text { font-size: 14px; line-height: 1.4; color: var(--ink); }
+.step__floor { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+/* Афиша */
+.section-title {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--gray); margin: 4px 0 14px; font-weight: 700;
+}
+.event-card {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 14px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, transform .1s;
+}
+.event-card:hover { border-color: var(--red); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.event-card__type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--red); font-weight: 700; }
+.event-card__title { font-size: 16px; font-weight: 700; margin: 4px 0 6px; line-height: 1.2; color: var(--ink); }
+.event-card__meta { font-size: 12px; color: var(--gray); }
+.event-card__check { float: right; }
+.event-card input[type=checkbox] { accent-color: var(--red); width: 18px; height: 18px; }
+
+/* ---------- ФУТЕР: режимы ---------- */
+.modes {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 20px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    overflow-x: auto;
+}
+.modes__label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--gray); margin-right: 8px; white-space: nowrap;
+}
+.mode {
+    font-family: var(--font);
+    font-size: 13px; font-weight: 600;
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--line);
+    padding: 8px 14px; cursor: pointer; white-space: nowrap;
+    transition: color .15s, border-color .15s, background .15s;
+}
+.mode:hover { color: var(--ink); border-color: var(--gray); }
+.mode.is-active { color: #fff; background: var(--red); border-color: var(--red); }
+
+/* ---------- АДАПТИВ ---------- */
+@media (max-width: 720px) {
+    :root { --header-h: 56px; }
+    .brand__name { font-size: 14px; }
+    .search { order: 3; flex-basis: 100%; max-width: none; }
+    .header { flex-wrap: wrap; height: auto; padding: 8px 14px; }
+    #app { grid-template-rows: auto 1fr var(--footer-h); }
+    .panel { width: 100%; }
+    .stage { grid-template-columns: 48px 1fr; }
+}
+
+[hidden] { display: none !important; }

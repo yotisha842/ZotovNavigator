@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Зотов.Навигатор</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+    </script>
+</head>
+<body>
+<div id="app">
+
+    <!-- ШАПКА -->
+    <header class="header">
+        <div class="brand">
+            <span class="brand__mark"></span>
+            <span class="brand__name">ЗОТОВ<span class="brand__dot">.</span>НАВИГАТОР</span>
+        </div>
+        <div class="search">
+            <input id="searchInput" class="search__input" type="text"
+                   placeholder="Поиск: лекторий, кафе, выставка…" autocomplete="off">
+            <div id="searchResults" class="search__results" hidden></div>
+        </div>
+        <div class="header__actions">
+            <button id="afishaToggle" class="btn btn--ghost">Афиша</button>
+            <button id="helpToggle" class="btn btn--icon" title="Подсказка">?</button>
+        </div>
+    </header>
+
+    <!-- ОСНОВНАЯ ОБЛАСТЬ -->
+    <main class="stage">
+        <!-- Переключатель этажей -->
+        <nav class="floors" id="floorSwitcher" aria-label="Этажи"></nav>
+
+        <!-- 3D-сцена -->
+        <div id="sceneContainer" class="scene">
+            <div id="tooltip" class="tooltip" hidden></div>
+            <div id="loading" class="loading">Загрузка модели здания…</div>
+        </div>
+
+        <!-- Правая панель: детали зоны / маршрут / афиша -->
+        <aside id="panel" class="panel" hidden>
+            <button id="panelClose" class="panel__close" aria-label="Закрыть">×</button>
+            <div id="panelContent" class="panel__content"></div>
+        </aside>
+    </main>
+
+    <!-- ФУТЕР: режимы -->
+    <footer class="modes" id="modeSwitcher">
+        <span class="modes__label">Режим</span>
+        <button class="mode is-active" data-mode="first">Я впервые</button>
+        <button class="mode" data-mode="event">На мероприятие</button>
+        <button class="mode" data-mode="all">Всё посмотреть</button>
+        <button class="mode" data-mode="kids">С детьми</button>
+        <button class="mode" data-mode="plan">План дня</button>
+    </footer>
+
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
