@@ -46,6 +46,12 @@
         <div id="sceneContainer" class="scene">
             <div id="tooltip" class="tooltip" hidden></div>
             <div id="loading" class="loading">Загрузка модели здания…</div>
+            <!-- Переключатель способа перемещения между этажами -->
+            <div id="transportToggle" class="transport-toggle">
+                <span class="transport-toggle__label">Подъём</span>
+                <button class="transport-btn is-active" data-transport="stairs">Лестница</button>
+                <button class="transport-btn" data-transport="elevator">Лифт</button>
+            </div>
         </div>
 
         <!-- Правая панель: детали зоны / маршрут / афиша -->
