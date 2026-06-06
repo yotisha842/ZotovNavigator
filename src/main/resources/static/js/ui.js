@@ -179,6 +179,32 @@ function hidePanel() {
 }
 
 // ---------------------------------------------------------------------------
+// Рекомендации магазина
+// ---------------------------------------------------------------------------
+const RECO_ZONE_TYPES = new Set(['CINEMA', 'EXHIBITION', 'LECTURE', 'WORKSHOP', 'CAFE', 'SHOP']);
+
+async function appendRecommendations(zoneType) {
+    if (!RECO_ZONE_TYPES.has(zoneType)) return;
+    let products;
+    try { products = await api.recommendations(zoneType); } catch { return; }
+    if (!products || !products.length) return;
+
+    const cards = products.map((p) => `
+        <a class="shop-card" href="${escapeHtml(p.shopUrl)}" target="_blank" rel="noopener noreferrer">
+            <div class="shop-card__name">${escapeHtml(p.name)}</div>
+            <div class="shop-card__price">${p.price.toLocaleString('ru-RU')} ₽</div>
+        </a>`).join('');
+
+    const section = document.createElement('div');
+    section.className = 'shop-section';
+    section.innerHTML = `
+        <div class="shop-section__title">В магазине Зотова</div>
+        ${cards}
+        <a class="shop-section__more" href="https://shop.centrezotov.ru/new" target="_blank" rel="noopener noreferrer">Все товары →</a>`;
+    el.panelContent.appendChild(section);
+}
+
+// ---------------------------------------------------------------------------
 // Зона
 // ---------------------------------------------------------------------------
 export function showZone(zoneId) {
@@ -206,6 +232,7 @@ export function showZone(zoneId) {
         state.startZoneId = zoneId;
         showZone(zoneId);
     };
+    appendRecommendations(z.type);
 }
 
 // ---------------------------------------------------------------------------
@@ -252,6 +279,8 @@ function renderRoute(resp) {
         setPulse([]);
         hidePanel();
     };
+    const destType = resp.steps[resp.steps.length - 1].zoneType;
+    appendRecommendations(destType);
 }
 
 // ---------------------------------------------------------------------------

@@ -16,30 +16,30 @@
 
 -- ---------- ЭТАЖИ ----------
 INSERT INTO floor (id, number, name, height_meters, radius_meters, color, description) VALUES
- (1, 1.0, 'Первый этаж — Форум',           4.0, 20.0, '#8C8C8C',
+ (1, 1.0, 'Первый этаж — Форум',           4.0, 20.0, '#A5A5A5',
   'Свободный вход. Информационная стойка, кассы, кафе, магазин «Зотов.Вещь!», туалеты.'),
  (2, 1.5, 'Антресоль — Гардероб',          2.0, 27.0, '#6B5B95',
   'Пристройка между 1-м и 2-м этажами. Бесплатный гардероб, камеры хранения, туалеты.'),
- (3, 2.0, 'Второй этаж — Выставки',        4.0, 20.0, '#E63329',
+ (3, 2.0, 'Второй этаж — Выставки',        4.0, 20.0, '#FF0068',
   'Основные выставочные залы A, B, C. Детский клуб.'),
  (4, 2.5, 'Переход 2½ — Технический уровень', 2.0, 27.0, '#9C9C9C',
   'Промежуточная площадка лестничной башни между 2-м и 3-м этажами. Санузел.'),
- (5, 3.0, 'Третий этаж — Выставки',        4.0, 20.0, '#C0392B',
+ (5, 3.0, 'Третий этаж — Выставки',        4.0, 20.0, '#CC0055',
   'Выставочные залы D и E. Продолжение экспозиции.'),
- (6, 4.0, 'Четвёртый этаж — Кино и Лекторий', 4.0, 20.0, '#4A6B8A',
+ (6, 4.0, 'Четвёртый этаж — Кино и Лекторий', 4.0, 20.0, '#083297',
   'Кинотеатр «Зотов.Кино», лекторий, магазин «Зотов.Вещь!» (вторая точка).');
 
 -- ---------- ЗОНЫ ----------
 
 -- ===== Этаж 1 (floor_id=1) — Форум =====
 INSERT INTO zone (id, name, type, floor_id, angle_start, angle_end, radius_inner, radius_outer, color, description, icon_key) VALUES
- (1,  'Главный вход',            'ENTRANCE',  1, 310, 360,  6, 20, '#2E8B57',
+ (1,  'Главный вход',            'ENTRANCE',  1, 310, 360,  6, 20, '#111111',
       'Главный вход в Центр «Зотов» со стороны ул. Ходынской. Вход свободный.', 'entrance'),
  (2,  'Форум',                   'PUBLIC',    1,   0,  85,  6, 20, '#8C8C8C',
       'Общественное пространство 1 этажа. Бесплатный вход, временные выставки, зона отдыха.', 'public'),
  (3,  'Кафе «Зотов»',           'CAFE',      1,  85, 195,  6, 20, '#D99A2B',
       'Кафе с авторской кухней. Кофе, завтраки, обеды, десерты. Открыто с 11:00.', 'cafe'),
- (4,  'Магазин «Зотов.Вещь!»',  'SHOP',      1, 195, 310,  6, 20, '#F0EDE7',
+ (4,  'Магазин «Зотов.Вещь!»',  'SHOP',      1, 195, 310,  6, 20, '#C8C8C8',
       'Концепт-стор: книги по искусству и конструктивизму, сувениры, дизайнерские объекты.', 'shop'),
  (5,  'Туалеты (1 этаж)',        'RESTROOM',  1, 280, 312,  6, 20, '#3A8C8C',
       'Санузлы первого этажа. Доступный туалет — в зоне кафе.', 'restroom'),
@@ -60,11 +60,11 @@ INSERT INTO zone (id, name, type, floor_id, angle_start, angle_end, radius_inner
 
 -- ===== Этаж 2 (floor_id=3) — Выставочные залы =====
 INSERT INTO zone (id, name, type, floor_id, angle_start, angle_end, radius_inner, radius_outer, color, description, icon_key) VALUES
- (11, 'Выставочный зал A',       'EXHIBITION', 3,   0, 115, 6, 20, '#E63329',
+ (11, 'Выставочный зал A',       'EXHIBITION', 3,   0, 115, 6, 20, '#FF0068',
       'Главный выставочный зал. Основная экспозиция Центра.', 'exhibition'),
- (12, 'Выставочный зал B',       'EXHIBITION', 3, 115, 235, 6, 20, '#E63329',
+ (12, 'Выставочный зал B',       'EXHIBITION', 3, 115, 235, 6, 20, '#FF0068',
       'Второй выставочный зал. Постоянная экспозиция.', 'exhibition'),
- (13, 'Выставочный зал C',       'EXHIBITION', 3, 235, 320, 6, 20, '#D44020',
+ (13, 'Выставочный зал C',       'EXHIBITION', 3, 235, 320, 6, 20, '#FF0068',
       'Зал временных выставок.', 'exhibition'),
  (14, 'Детский клуб',            'PUBLIC',     3, 320, 360, 6, 20, '#F0A050',
       'Детский клуб. Занятия для детей 4–12 лет. Требуется предварительная запись.', 'public'),
@@ -89,9 +89,9 @@ INSERT INTO zone (id, name, type, floor_id, angle_start, angle_end, radius_inner
 
 -- ===== Этаж 3 (floor_id=5) — Выставки =====
 INSERT INTO zone (id, name, type, floor_id, angle_start, angle_end, radius_inner, radius_outer, color, description, icon_key) VALUES
- (20, 'Выставочный зал D',       'EXHIBITION', 5,   0, 175, 6, 20, '#C0392B',
+ (20, 'Выставочный зал D',       'EXHIBITION', 5,   0, 175, 6, 20, '#CC0055',
       'Выставочный зал D. Масштабные инсталляции и проекты.', 'exhibition'),
- (21, 'Выставочный зал E',       'EXHIBITION', 5, 175, 330, 6, 20, '#C0392B',
+ (21, 'Выставочный зал E',       'EXHIBITION', 5, 175, 330, 6, 20, '#CC0055',
       'Выставочный зал E. Арт-резиденции и мастер-классы.', 'exhibition'),
  (22, 'Фойе и зона отдыха',      'PUBLIC',     5, 330, 360, 6, 20, '#8C8C8C',
       'Фойе третьего этажа. Зона ожидания.', 'public'),
@@ -106,9 +106,9 @@ INSERT INTO zone (id, name, type, floor_id, angle_start, angle_end, radius_inner
 INSERT INTO zone (id, name, type, floor_id, angle_start, angle_end, radius_inner, radius_outer, color, description, icon_key) VALUES
  (26, 'Зотов.Кино',              'CINEMA',     6,   0, 125, 6, 20, '#4B2E5E',
       'Кинотеатр «Зотов.Кино». Авторская программа, классика, архивные показы. Места для кресел-колясок.', 'cinema'),
- (27, 'Лекторий',                'LECTURE',    6, 125, 245, 6, 20, '#4A6B8A',
+ (27, 'Лекторий',                'LECTURE',    6, 125, 245, 6, 20, '#083297',
       'Лекторий на 120 мест. Лекции, дискуссии, концерты, спектакли.', 'lecture'),
- (28, 'Магазин «Зотов.Вещь!»',  'SHOP',       6, 245, 330, 6, 20, '#F0EDE7',
+ (28, 'Магазин «Зотов.Вещь!»',  'SHOP',       6, 245, 330, 6, 20, '#C8C8C8',
       'Вторая точка магазина. Расширенный ассортимент изданий и дизайн-объектов.', 'shop'),
  (29, 'Туалеты (4 этаж)',        'RESTROOM',   6, 330, 360, 6, 20, '#3A8C8C',
       'Санузлы четвёртого этажа. Отдельный гардероб для посетителей кино.', 'restroom'),
@@ -158,3 +158,74 @@ INSERT INTO event (id, title, description, start_time, end_time, zone_id, type, 
  (9, 'Концерт «Авангард-вечер»',
      'Современная академическая музыка в индустриальном пространстве.',
      '2026-06-10 20:00:00', '2026-06-10 22:00:00', 2,  'CONCERT', NULL);
+
+-- ---------- ТОВАРЫ МАГАЗИНА (рекомендации) ----------
+INSERT INTO product (id, name, price, shop_url, tags) VALUES
+ (1,  'Живые и мёртвое. История советского кино',          2270, 'https://shop.centrezotov.ru/new', 'cinema'),
+ (2,  'Кино эпохи НЭПА',                                   5180, 'https://shop.centrezotov.ru/new', 'cinema'),
+ (3,  'Немое кино: Магия кинематографа',                    1240, 'https://shop.centrezotov.ru/new', 'cinema'),
+ (4,  'Очень страшное кино: история фильмов ужасов',        1750, 'https://shop.centrezotov.ru/new', 'cinema'),
+ (5,  'Сеанс №93',                                          2000, 'https://shop.centrezotov.ru/new', 'cinema'),
+ (6,  'Александр Родченко: художник-конструктор будущего',  1300, 'https://shop.centrezotov.ru/new', 'exhibition'),
+ (7,  'Владимир Татлин',                                    1310, 'https://shop.centrezotov.ru/new', 'exhibition'),
+ (8,  'Bauhaus (World of Art)',                             2940, 'https://shop.centrezotov.ru/new', 'exhibition'),
+ (9,  'Le Corbusier (World of Art)',                        3740, 'https://shop.centrezotov.ru/new', 'exhibition'),
+ (10, 'Худи «Хлеб»',                                       7500, 'https://shop.centrezotov.ru/new', 'exhibition,shop'),
+ (11, 'История СССР. Лекции Льва Лурье',                    1490, 'https://shop.centrezotov.ru/new', 'lecture'),
+ (12, 'Юрий Любимов: путь к «Мастеру»',                    1410, 'https://shop.centrezotov.ru/new', 'lecture'),
+ (13, 'Женский вопрос в СССР',                              1820, 'https://shop.centrezotov.ru/new', 'lecture'),
+ (14, 'Ностальгическая Москва',                             1000, 'https://shop.centrezotov.ru/new', 'lecture'),
+ (15, 'Нисенитница, или 500 лет русского абсурда',          1560, 'https://shop.centrezotov.ru/new', 'workshop'),
+ (16, 'Мир ботаника Вавилова',                              1100, 'https://shop.centrezotov.ru/new', 'workshop'),
+ (17, 'Свеча фигурная «Милый день» белая',                  4200, 'https://shop.centrezotov.ru/new', 'cafe'),
+ (18, 'Аромат для дома «Дом 21»',                           2500, 'https://shop.centrezotov.ru/new', 'cafe'),
+ (19, 'Стакан «Лось»',                                      2500, 'https://shop.centrezotov.ru/new', 'cafe'),
+ (20, 'Сумка ЗОТОВ × ZOTEME',                               5900, 'https://shop.centrezotov.ru/new', 'shop'),
+ (21, 'Домино «Зверята. Май Митурич»',                      1360, 'https://shop.centrezotov.ru/new', 'shop');
+
+-- Книги (дополнение)
+INSERT INTO product (id, name, price, shop_url, tags) VALUES
+ (22, 'История постановки фильма «Броненосец Потемкин»',     1730, 'https://shop.centrezotov.ru/catalog/kinematograf',       'cinema'),
+ (23, 'Эль Лисицкий. Слоненок. Репринтные издания',          4330, 'https://shop.centrezotov.ru/catalog/iskusstvo',           'exhibition'),
+ (24, 'Сделано в СССР: материализация нового мира',           1200, 'https://shop.centrezotov.ru/catalog/iskusstvo',           'exhibition'),
+ (25, 'Картография неведения: мистицизм, психиатрия',         1540, 'https://shop.centrezotov.ru/catalog/gumanitarnyi-non-fiksn', 'lecture'),
+ (26, 'Рассказы о пустыне и дорогах. Автопробег Москва–Каракумы', 1950, 'https://shop.centrezotov.ru/catalog/istoriia',      'lecture'),
+ (27, 'Артгид. Бразилия',                                    4500, 'https://shop.centrezotov.ru/catalog/iskusstvo',           'lecture'),
+ (28, 'Как появился наш съедобный мир',                       1010, 'https://shop.centrezotov.ru/catalog/gumanitarnyi-non-fiksn', 'workshop'),
+ (29, 'Искусство исследовать усадьбы. Дело №1-17',            1530, 'https://shop.centrezotov.ru/catalog/arxitektura-i-urbanistika', 'workshop'),
+ (30, 'Адреса Михаила Булгакова',                              970, 'https://shop.centrezotov.ru/catalog/xudozestvennaia-literatura', 'lecture');
+
+-- Одежда и аксессуары
+INSERT INTO product (id, name, price, shop_url, tags) VALUES
+ (31, 'Футболка «Киноощущение мира»',                         4550, 'https://shop.centrezotov.ru/catalog/odezda',              'cinema'),
+ (32, 'Сумка «Киноощущение мира»',                            3200, 'https://shop.centrezotov.ru/catalog/aksessuary',          'cinema'),
+ (33, 'Брелок Киноглаз',                                       950, 'https://shop.centrezotov.ru/catalog/aksessuary',          'cinema'),
+ (34, 'Палантин Popova',                                     10900, 'https://shop.centrezotov.ru/catalog/aksessuary',          'exhibition'),
+ (35, 'Брошь Ballet Bauhaus №3',                               5900, 'https://shop.centrezotov.ru/catalog/ukraseniia',          'exhibition'),
+ (36, 'Фартук Хлеб',                                          3000, 'https://shop.centrezotov.ru/catalog/odezda',              'cafe,shop'),
+ (37, 'Шоппер «Зотов» бежевый',                               3500, 'https://shop.centrezotov.ru/catalog/aksessuary',          'shop'),
+ (38, 'Очечник Батон',                                        1800, 'https://shop.centrezotov.ru/catalog/aksessuary',          'shop'),
+ (39, 'Кардхолдер «Жизнь врасплох»',                          1300, 'https://shop.centrezotov.ru/catalog/aksessuary',          'shop');
+
+-- Сувениры
+INSERT INTO product (id, name, price, shop_url, tags) VALUES
+ (40, 'Плакат Киноглаз',                                      3000, 'https://shop.centrezotov.ru/catalog/suveniry',            'cinema,exhibition'),
+ (41, 'Стикер «Вертов»',                                       200, 'https://shop.centrezotov.ru/catalog/stikery',             'cinema'),
+ (42, 'Открытка Киноглаз. Дзига Вертов',                       150, 'https://shop.centrezotov.ru/catalog/otkrytki',            'cinema'),
+ (43, 'Скетчбук «Как надо работать» А5',                        800, 'https://shop.centrezotov.ru/catalog/kanceliariia',        'workshop'),
+ (44, 'Блокнот А5 Хлебозавод №5',                              500, 'https://shop.centrezotov.ru/catalog/kanceliariia',        'workshop,shop'),
+ (45, 'Стикерпак «Конструкция всем»',                           660, 'https://shop.centrezotov.ru/catalog/stikery',             'exhibition,shop'),
+ (46, 'Линейка Хлебозавод',                                    400, 'https://shop.centrezotov.ru/catalog/kanceliariia',        'shop'),
+ (47, 'Значок «Зотов»',                                        650, 'https://shop.centrezotov.ru/catalog/znacki',              'shop');
+
+-- Декор (дополнение)
+INSERT INTO product (id, name, price, shop_url, tags) VALUES
+ (48, 'Стакан «Медведь»',                                     2500, 'https://shop.centrezotov.ru/catalog/posuda',              'cafe'),
+ (49, 'Чайная пара «Косичка»',                                3800, 'https://shop.centrezotov.ru/catalog/posuda',              'cafe'),
+ (50, 'Кружка «Красно солнышко»',                             2300, 'https://shop.centrezotov.ru/catalog/posuda',              'cafe'),
+ (51, 'Стакан «Волк»',                                        2500, 'https://shop.centrezotov.ru/catalog/posuda',              'cafe'),
+ (52, 'Конструктор «Храм чернорабочих»',                      8400, 'https://shop.centrezotov.ru/catalog/igry',                'exhibition,workshop'),
+ (53, 'Гирлянда «Мысли конструктивно»',                       1500, 'https://shop.centrezotov.ru/catalog/interernye-obieekty', 'exhibition,shop'),
+ (54, 'Плед Экстер (большие балерины)',                       18000, 'https://shop.centrezotov.ru/catalog/interernye-obieekty', 'exhibition'),
+ (55, 'Набор игральных кубиков «Бросок костей»',              15000, 'https://shop.centrezotov.ru/catalog/igry',                'workshop,shop'),
+ (56, 'Свеча фигурная «Милый день» красная',                   4200, 'https://shop.centrezotov.ru/catalog/sveci-i-podsvecniki', 'cafe');

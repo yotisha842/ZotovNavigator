@@ -1,7 +1,7 @@
 // Отрисовка маршрута в 3D: труба-линия вдоль зон + бегущий маркер + точки старта/финиша.
 import * as THREE from 'three';
 import { scene, COLORS, onFrame } from './scene.js';
-import { zoneCenterWorld } from './building.js';
+import { zoneCenterWorld, setRouteFloors } from './building.js';
 
 const group = new THREE.Group();
 group.name = 'route';
@@ -20,12 +20,17 @@ export function clearRoute() {
     marker = null;
     progress = 0;
     revealDone = false;
+    setRouteFloors(null);
 }
 
 /** Построить маршрут по шагам ответа /api/route. */
 export function drawRoute(steps) {
     clearRoute();
     if (!steps || steps.length < 2) return;
+
+    // Выделить задействованные этажи: остальные станут тусклее
+    const routeFloors = new Set(steps.map((s) => s.floorNumber).filter((f) => f != null));
+    setRouteFloors(routeFloors);
 
     // Строим массив точек; при смене этажа добавляем два направляющих
     // waypoint-а с теми же X,Z что у точки назначения — это заставляет
