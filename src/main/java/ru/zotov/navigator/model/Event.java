@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * Мероприятие афиши, привязанное к зоне, где оно проходит.
@@ -56,4 +57,10 @@ public class Event {
 
     /** URL афиши (опционально). */
     private String posterUrl;
+
+    /** Откуда пришло событие: вручную, парсер или ELMA365. */
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(20) DEFAULT 'MANUAL'")
+    @Builder.Default
+    private EventSource source = EventSource.MANUAL;
 }
