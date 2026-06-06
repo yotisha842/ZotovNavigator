@@ -35,6 +35,12 @@ controls.target.set(0, 18, 0);
 controls.minDistance = 20;
 controls.maxDistance = 180;
 controls.maxPolarAngle = Math.PI / 2.05; // не уходим под пол
+controls.mouseButtons = {
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.PAN,
+};
+renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // Освещение (мягкий дневной свет под светлую тему)
 scene.add(new THREE.AmbientLight(0xffffff, 0.95));

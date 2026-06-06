@@ -45,9 +45,9 @@ public class EventService {
                 .toList();
     }
 
-    /** Ближайшие события от текущего момента. */
+    /** Текущие и предстоящие события (end_time >= сейчас — включает идущие выставки). */
     public List<EventDto> getUpcoming() {
-        return eventRepository.findByStartTimeGreaterThanEqualOrderByStartTimeAsc(LocalDateTime.now()).stream()
+        return eventRepository.findByEndTimeGreaterThanEqualOrderByStartTimeAsc(LocalDateTime.now()).stream()
                 .map(EventDto::from)
                 .toList();
     }
