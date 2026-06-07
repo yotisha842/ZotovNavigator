@@ -2,9 +2,13 @@
 // Каркас здания грузится из model/zotov-naked.glb; зоны/маршруты/шахты накладываются поверх.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { scene, COLORS } from './scene.js';
+import { scene, COLORS, onFrame } from './scene.js';
 
 const deg2rad = (d) => (d * Math.PI) / 180;
+
+const ZONE_PALETTE = ['#FFFFFF', '#D9D9D9', '#B2B2B2', '#838080'];
+const HIGHLIGHT_COLOR = 0xFF3399;
+function zoneGray(type, idx) { return ZONE_PALETTE[idx % ZONE_PALETTE.length]; }
 
 // ---------------------------------------------------------------------------
 // Калибровочные параметры наложений — экспортируются для live-редактора.
@@ -42,6 +46,7 @@ const R_OUTER   = 20;      // радиус основного цилиндра (
 // Пристройка (аннекс) — нужна для раскладки антресольных зон и маркера входа
 const ANNEX_ATTACH_X = R_OUTER - 1.5;   // = 18.5 — начало пристройки
 const ANNEX_SIZES = new Map([
+    [1,   { depth: 24, width: 13 }],
     [1.5, { depth: 24, width: 13 }],
     [2.5, { depth: 19, width: 11 }],
 ]);
@@ -58,7 +63,7 @@ const MODEL_FIT = {
     extraScale: 2.0,             // доп. множитель масштаба
     rotationY: 0,                // доворот вокруг вертикальной оси, радианы
     offset: new THREE.Vector3(14, 0, 0), // сдвиг (X, Y, Z) после центрирования
-    opacity: 0.35,               // полупрозрачность, чтобы видеть зоны/маршруты внутри
+    opacity: 0.20,               // 20% видимости
     stretchY: 14,                // растяжка по высоте в мировых единицах (не меняет X/Z)
     stretchXZ: 3,                // растяжка по ширине в мировых единицах (не меняет Y)
 };
@@ -72,6 +77,18 @@ const floorMeta   = new Map();
 const zoneMeshes  = [];
 const zoneIndex   = new Map();
 let maxFloor = 1;
+
+// Состояние анимации лифта
+let _elevCab = null;
+let _elevMinY = 0;
+let _elevMaxY = 44;
+let _elevTime = 0;
+onFrame((dt) => {
+    if (!_elevCab) return;
+    _elevTime += dt;
+    const frac = 0.5 - 0.5 * Math.cos((_elevTime % 10) / 10 * Math.PI * 2);
+    _elevCab.position.y = _elevMinY + frac * (_elevMaxY - _elevMinY);
+});
 
 function floorBaseY(number) {
     const raw   = FLOOR_BASE_Y_RAW.get(number) ?? (number - 1) * 7;
@@ -105,10 +122,20 @@ export async function buildBuilding(floors, zones) {
         building.add(group);
 
         if (isMezzanine(floor.number)) {
-            addAnnexZoneMeshes(group, byFloor.get(floor.number) || [], floor.number, baseY);
+            const mezzZones = byFloor.get(floor.number) || [];
+            indexMezzanineCirculationZones(mezzZones, baseY);
+            addAnnexZoneMeshes(group, mezzZones, floor.number, baseY);
         } else {
-            for (const z of (byFloor.get(floor.number) || [])) {
-                addZoneMesh(group, z, baseY, height);
+            const floorZones = byFloor.get(floor.number) || [];
+            let colorIdx = 0;
+            for (const z of floorZones) {
+                if (z.radiusInner >= R_OUTER) continue; // аннекс — отдельно
+                if (z.type === 'ELEVATOR') { indexCirculationZone(z, baseY); continue; }
+                addZoneMesh(group, z, baseY, height, colorIdx++);
+            }
+            if (ANNEX_SIZES.has(floor.number)) {
+                const annexZones = floorZones.filter(z => z.radiusInner >= R_OUTER);
+                if (annexZones.length) addAnnexZoneMeshes(group, annexZones, floor.number, baseY);
             }
         }
     }
@@ -155,6 +182,7 @@ async function loadBuildingModel() {
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
         for (const m of mats) {
             if (!m) continue;
+            m.color.setHex(0x0A0A0A);
             m.transparent = true;
             m.opacity = MODEL_FIT.opacity;
             m.depthWrite = false;
@@ -243,15 +271,15 @@ function addEntranceMarker() {
 // ---------------------------------------------------------------------------
 // Зоны основных этажей (интерактивный слой — секторные кольца)
 // ---------------------------------------------------------------------------
-function addZoneMesh(group, z, baseY, floorHeight) {
+function addZoneMesh(group, z, baseY, floorHeight, colorIdx = 0) {
     const inner  = Math.max(0.01, z.radiusInner * CALIBRATION.zoneRadiiScale);
     const outer  = z.radiusOuter * CALIBRATION.zoneRadiiScale;
-    const thetaStart  = deg2rad(z.angleStart);
+    const thetaStart  = deg2rad(z.angleStart) + Math.PI / 2;
     const thetaLength = deg2rad(z.angleEnd - z.angleStart);
     const segs = Math.max(6, Math.round((z.angleEnd - z.angleStart) / 4));
 
     const geo       = new THREE.RingGeometry(inner, outer, segs, 1, thetaStart, thetaLength);
-    const baseColor = new THREE.Color(z.color || '#8C8C8C');
+    const baseColor = new THREE.Color(zoneGray(z.type, colorIdx));
     const mat = new THREE.MeshStandardMaterial({
         color: baseColor,
         transparent: true, opacity: 0.85,
@@ -268,8 +296,38 @@ function addZoneMesh(group, z, baseY, floorHeight) {
 
     const ang = deg2rad((z.angleStart + z.angleEnd) / 2);
     const rc  = (z.radiusInner + z.radiusOuter) / 2 * CALIBRATION.zoneRadiiScale;
-    const center = new THREE.Vector3(rc * Math.cos(ang) + CALIBRATION.zoneXOffset, baseY + 0.6, -rc * Math.sin(ang));
+    const center = (z.type === 'ENTRANCE' && CALIBRATION.entrancePos)
+        ? new THREE.Vector3(CALIBRATION.entrancePos.x, baseY + 0.6, CALIBRATION.entrancePos.z)
+        : new THREE.Vector3(rc * Math.cos(ang) + CALIBRATION.zoneXOffset, baseY + 0.6, -rc * Math.sin(ang));
     zoneIndex.set(z.id, { data: z, mesh, center, baseColor, floorNumber: z.floorNumber });
+}
+
+// ---------------------------------------------------------------------------
+// Лестницы/лифты — индексируются по кольцевой геометрии без меша,
+// чтобы маршрутная линия проходила через правильную точку шахты.
+// Используется для антресолей, а также для ELEVATOR на основных этажах
+// (лифт уже отображён анимированной шахтой через addVerticalShafts).
+// ---------------------------------------------------------------------------
+function indexCirculationZone(z, baseY) {
+    const ang = deg2rad((z.angleStart + z.angleEnd) / 2);
+    const rc  = (z.radiusInner + z.radiusOuter) / 2 * CALIBRATION.zoneRadiiScale;
+    const center = new THREE.Vector3(
+        rc * Math.cos(ang) + CALIBRATION.zoneXOffset,
+        baseY + 0.6,
+        -rc * Math.sin(ang),
+    );
+    zoneIndex.set(z.id, {
+        data: z, mesh: null, center,
+        baseColor: new THREE.Color(zoneGray(z.type)),
+        floorNumber: z.floorNumber,
+    });
+}
+
+function indexMezzanineCirculationZones(zones, baseY) {
+    for (const z of zones) {
+        if (z.type !== 'STAIRS' && z.type !== 'ELEVATOR') continue;
+        indexCirculationZone(z, baseY);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -291,6 +349,7 @@ function addAnnexZoneMeshes(group, zones, floorNumber, baseY) {
     const width   = sz.width * cfg.scale;
     const attachX = CYLINDER_R - 1.5;
     const centerX = attachX + depth / 2 + cfg.xOffset;
+    const effectiveBaseY = baseY + (cfg.yOffset || 0);
 
     const totalSpan = rooms.reduce((sum, z) => sum + (z.angleEnd - z.angleStart), 0);
     let zOffset = -width / 2;
@@ -301,7 +360,7 @@ function addAnnexZoneMeshes(group, zones, floorNumber, baseY) {
         const zoneCenterZ = zOffset + zoneWidth / 2;
 
         const geo       = new THREE.PlaneGeometry(depth - 0.3, zoneWidth - 0.12);
-        const baseColor = new THREE.Color(z.color || '#8C8C8C');
+        const baseColor = new THREE.Color(zoneGray(z.type));
         const mat = new THREE.MeshStandardMaterial({
             color: baseColor,
             transparent: true, opacity: 0.85,
@@ -310,12 +369,12 @@ function addAnnexZoneMeshes(group, zones, floorNumber, baseY) {
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(centerX, baseY + 0.15, zoneCenterZ);
+        mesh.position.set(centerX, effectiveBaseY + 0.15, zoneCenterZ);
         mesh.userData = { zoneId: z.id, type: z.type, name: z.name, floorNumber: z.floorNumber };
         group.add(mesh);
         zoneMeshes.push(mesh);
 
-        const center = new THREE.Vector3(centerX, baseY + 0.6, zoneCenterZ);
+        const center = new THREE.Vector3(centerX, effectiveBaseY + 0.6, zoneCenterZ);
         zoneIndex.set(z.id, { data: z, mesh, center, baseColor, floorNumber: z.floorNumber });
 
         zOffset += zoneWidth;
@@ -340,39 +399,92 @@ function addVerticalShafts() {
 
     if (elevPos) {
         const shaftMat = new THREE.MeshStandardMaterial({
-            color: 0x3A7BAD, transparent: true, opacity: 0.28,
+            color: 0x0A0A0A, transparent: true, opacity: 0.28,
             metalness: 0.65, roughness: 0.25,
         });
-        const geo   = new THREE.BoxGeometry(2.0, totalH, 2.0);
-        const shaft = new THREE.Mesh(geo, shaftMat);
+        const shaftGeo = new THREE.BoxGeometry(2.0, totalH, 2.0);
+        const shaft = new THREE.Mesh(shaftGeo, shaftMat);
         shaft.position.set(elevPos.x, totalH / 2, elevPos.z);
         building.add(shaft);
 
-        const edges = new THREE.LineSegments(
-            new THREE.EdgesGeometry(geo),
-            new THREE.LineBasicMaterial({ color: 0x4A9ED6 })
+        const shaftEdges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(shaftGeo),
+            new THREE.LineBasicMaterial({ color: 0x333333 }),
         );
-        edges.position.copy(shaft.position);
-        building.add(edges);
+        shaftEdges.position.copy(shaft.position);
+        building.add(shaftEdges);
+
+        // Кабина лифта — движется вверх-вниз за 10 секунд
+        const cabH = 2.4;
+        const cabGeo = new THREE.BoxGeometry(1.5, cabH, 1.5);
+        const cabMat = new THREE.MeshStandardMaterial({
+            color: 0x4A9ED6, metalness: 0.85, roughness: 0.15,
+            transparent: true, opacity: 0.85,
+        });
+        const cab = new THREE.Mesh(cabGeo, cabMat);
+        const cabEdges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(cabGeo),
+            new THREE.LineBasicMaterial({ color: 0xAADFFF }),
+        );
+        cab.add(cabEdges);
+        _elevMinY = cabH / 2 + 0.2;
+        _elevMaxY = totalH - cabH / 2 - 0.2;
+        cab.position.set(elevPos.x, _elevMinY, elevPos.z);
+        building.add(cab);
+        _elevCab = cab;
+        _elevTime = 0;
     }
 
     for (const stairsPos of stairsPosList) {
-        const mat = new THREE.MeshStandardMaterial({
-            color: 0xC8941A, transparent: true, opacity: 0.20,
+        const shaftMat = new THREE.MeshStandardMaterial({
+            color: 0x0A0A0A, transparent: true, opacity: 0.20,
             metalness: 0.5, roughness: 0.4,
         });
-        const geo   = new THREE.BoxGeometry(1.8, totalH, 1.8);
-        const shaft = new THREE.Mesh(geo, mat);
+        const shaftGeo = new THREE.BoxGeometry(1.8, totalH, 1.8);
+        const shaft = new THREE.Mesh(shaftGeo, shaftMat);
         shaft.position.set(stairsPos.x, totalH / 2, stairsPos.z);
         building.add(shaft);
 
-        const edges = new THREE.LineSegments(
-            new THREE.EdgesGeometry(geo),
-            new THREE.LineBasicMaterial({ color: 0xE8B422 })
+        const shaftEdges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(shaftGeo),
+            new THREE.LineBasicMaterial({ color: 0x333333 }),
         );
-        edges.position.copy(shaft.position);
-        building.add(edges);
+        shaftEdges.position.copy(shaft.position);
+        building.add(shaftEdges);
+
+        addStairLadder(stairsPos, totalH);
     }
+}
+
+// Лестница-стремянка внутри желтой шахты
+function addStairLadder(shaftPos, totalH) {
+    const mat = new THREE.MeshStandardMaterial({
+        color: 0x1A1A1A, metalness: 0.55, roughness: 0.35,
+    });
+    const railOffset = 0.55;
+
+    // Два вертикальных поручня
+    const railGeo = new THREE.CylinderGeometry(0.08, 0.08, totalH, 8);
+    for (const dx of [-railOffset, railOffset]) {
+        const rail = new THREE.Mesh(railGeo, mat);
+        rail.position.set(shaftPos.x + dx, totalH / 2, shaftPos.z);
+        building.add(rail);
+    }
+
+    // Горизонтальные ступени через InstancedMesh
+    const rungSpacing = 0.75;
+    const count = Math.floor(totalH / rungSpacing) + 1;
+    const rungGeo = new THREE.CylinderGeometry(0.055, 0.055, railOffset * 2, 6);
+    const rungs = new THREE.InstancedMesh(rungGeo, mat, count);
+    const m = new THREE.Matrix4();
+    const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2));
+    const scale = new THREE.Vector3(1, 1, 1);
+    for (let i = 0; i < count; i++) {
+        m.compose(new THREE.Vector3(shaftPos.x, i * rungSpacing, shaftPos.z), rot, scale);
+        rungs.setMatrixAt(i, m);
+    }
+    rungs.instanceMatrix.needsUpdate = true;
+    building.add(rungs);
 }
 
 function clearOverlays() {
@@ -395,30 +507,6 @@ function clear() {
     buildingModel = null;
 }
 
-// Прямоугольный overlay для 1-го этажа пристройки (в БД этаж 1 = кольца, но визуально
-// пристройка начинается с уровня 1, поэтому добавляем отдельный прямоугольник).
-function addFloor1AnnexRect() {
-    const cfg = CALIBRATION.annexFloors[1] || { xOffset: 0, yOffset: 0, scale: 1 };
-    const base = ANNEX_SIZES.get(1.5); // используем те же базовые размеры что у 1.5
-    const depth   = base.depth * cfg.scale;
-    const width   = base.width * cfg.scale;
-    const attachX = CYLINDER_R - 1.5;
-    const centerX = attachX + depth / 2 + cfg.xOffset;
-    const baseY   = floorBaseY(1) + (cfg.yOffset || 0);
-
-    const geo = new THREE.PlaneGeometry(depth - 0.3, width - 0.12);
-    const mat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color('#8a8070'),
-        transparent: true, opacity: 0.65,
-        side: THREE.DoubleSide, metalness: 0.1, roughness: 0.7,
-        emissive: new THREE.Color(0x000000),
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(centerX, baseY + 0.2, 0);
-    mesh.userData = { floorNumber: 1, isAnnex1: true };
-    building.add(mesh);
-}
 
 // Пересборка только зон/шахт/входа без перезагрузки GLB-модели.
 // Вызывается из calibrator.js при изменении параметров.
@@ -440,14 +528,23 @@ export function rebuildOverlays(floors, zones) {
         floorGroups.set(floor.number, group);
         building.add(group);
         if (isMezzanine(floor.number)) {
-            addAnnexZoneMeshes(group, byFloor.get(floor.number) || [], floor.number, baseY);
+            const mezzZones = byFloor.get(floor.number) || [];
+            indexMezzanineCirculationZones(mezzZones, baseY);
+            addAnnexZoneMeshes(group, mezzZones, floor.number, baseY);
         } else {
-            for (const z of (byFloor.get(floor.number) || [])) {
-                addZoneMesh(group, z, baseY, height);
+            const floorZones = byFloor.get(floor.number) || [];
+            let colorIdx = 0;
+            for (const z of floorZones) {
+                if (z.radiusInner >= R_OUTER) continue; // аннекс — отдельно
+                if (z.type === 'ELEVATOR') { indexCirculationZone(z, baseY); continue; }
+                addZoneMesh(group, z, baseY, height, colorIdx++);
+            }
+            if (ANNEX_SIZES.has(floor.number)) {
+                const annexZones = floorZones.filter(z => z.radiusInner >= R_OUTER);
+                if (annexZones.length) addAnnexZoneMeshes(group, annexZones, floor.number, baseY);
             }
         }
     }
-    addFloor1AnnexRect();
     addVerticalShafts();
     addEntranceMarker();
     setFloorFocus(null);
@@ -506,10 +603,12 @@ export function setRouteFloors(floorNumbersSet) {
 
 export function highlightZones(idSet) {
     for (const [id, e] of zoneIndex) {
+        if (!e.mesh) continue;
         const on = idSet && idSet.has(id);
-        e.mesh.material.emissive.setHex(on ? 0xFF0068 : 0x000000);
-        e.mesh.material.emissiveIntensity = on ? 0.45 : 0;
-        e.mesh.material.opacity = idSet ? (on ? 0.98 : 0.4) : 0.9;
+        e.mesh.material.color.setHex(on ? HIGHLIGHT_COLOR : e.baseColor.getHex());
+        e.mesh.material.emissive.setHex(on ? HIGHLIGHT_COLOR : 0x000000);
+        e.mesh.material.emissiveIntensity = on ? 0.6 : 0;
+        e.mesh.material.opacity = idSet ? (on ? 0.98 : 0.4) : 0.85;
     }
 }
 
@@ -520,14 +619,14 @@ export function pulse(dt, time) {
     const k = 0.5 + 0.5 * Math.sin(time * 3);
     for (const id of pulseZones) {
         const e = zoneIndex.get(id);
-        if (e) e.mesh.material.emissiveIntensity = 0.3 + 0.5 * k;
+        if (e && e.mesh) e.mesh.material.emissiveIntensity = 0.3 + 0.5 * k;
     }
 }
 
 export function setPulse(ids) {
     for (const id of pulseZones) {
         const e = zoneIndex.get(id);
-        if (e) e.mesh.material.emissiveIntensity = 0;
+        if (e && e.mesh) e.mesh.material.emissiveIntensity = 0;
     }
     pulseZones = ids || [];
 }

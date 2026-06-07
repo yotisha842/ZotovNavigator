@@ -56,7 +56,7 @@ export function drawRoute(steps) {
 
     const tubeGeo = new THREE.TubeGeometry(curve, 240, 0.35, 10, false);
     const tubeMat = new THREE.MeshStandardMaterial({
-        color: COLORS.red, emissive: COLORS.red, emissiveIntensity: 0.7,
+        color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.7,
         metalness: 0.3, roughness: 0.4,
     });
     tube = new THREE.Mesh(tubeGeo, tubeMat);
@@ -66,7 +66,7 @@ export function drawRoute(steps) {
     // Точка старта
     const start = new THREE.Mesh(
         new THREE.SphereGeometry(0.7, 20, 20),
-        new THREE.MeshStandardMaterial({ color: 0x2E8B57, emissive: 0x2E8B57, emissiveIntensity: 0.35 }));
+        new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.55 }));
     start.position.copy(pts[0]);
     group.add(start);
 
@@ -74,7 +74,7 @@ export function drawRoute(steps) {
     const end = new THREE.Group();
     const pin = new THREE.Mesh(
         new THREE.ConeGeometry(0.9, 2.4, 18),
-        new THREE.MeshStandardMaterial({ color: COLORS.red, emissive: COLORS.red, emissiveIntensity: 0.6 }));
+        new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.6 }));
     pin.rotation.x = Math.PI;
     pin.position.y = 1.6;
     end.add(pin);
@@ -89,7 +89,7 @@ export function drawRoute(steps) {
     // Бегущий маркер
     marker = new THREE.Mesh(
         new THREE.SphereGeometry(0.55, 16, 16),
-        new THREE.MeshStandardMaterial({ color: COLORS.red, emissive: COLORS.red, emissiveIntensity: 0.9 }));
+        new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.9 }));
     marker.position.copy(pts[0]);
     group.add(marker);
 
