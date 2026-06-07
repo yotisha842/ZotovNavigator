@@ -36,12 +36,12 @@
         </div>
         <div class="header__actions">
             <button class="btn btn--ghost events-menu-btn" id="eventsMenuToggle">
-                Мероприятия <span class="events-menu-arrow">▾</span>
+                <span class="btn-label">Мероприятия</span> <span class="events-menu-arrow">▾</span>
             </button>
             <button class="btn btn--ghost" id="chatHeaderBtn" title="ИИ-ассистент">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>ИИ-ассистент
+                </svg><span class="btn-label">ИИ-ассистент</span>
             </button>
         </div>
     </header>
@@ -51,20 +51,7 @@
         <!-- Переключатель этажей -->
         <nav class="floors" id="floorSwitcher" aria-label="Этажи"></nav>
 
-        <!-- Переключатель лестница/лифт -->
-        <div id="transportToggle" class="transport-toggle">
-            <button class="transport-btn is-active" data-transport="stairs" title="Лестница">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="4 20 4 14 10 14 10 8 16 8 16 4"/>
-                </svg>
-            </button>
-            <button class="transport-btn" data-transport="elevator" title="Лифт">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="5" y="2" width="14" height="20" rx="2"/>
-                    <path d="M9 10l3-3 3 3M9 14l3 3 3-3"/>
-                </svg>
-            </button>
-        </div>
+
 
         <!-- 3D-сцена -->
         <div id="sceneContainer" class="scene">
@@ -74,6 +61,7 @@
 
         <!-- Правая панель: детали зоны / маршрут / афиша -->
         <aside id="panel" class="panel" hidden>
+            <div class="panel__handle" id="panelHandle" aria-hidden="true"></div>
             <button id="panelClose" class="panel__close" aria-label="Закрыть">×</button>
             <div id="panelContent" class="panel__content"></div>
         </aside>

@@ -50,10 +50,13 @@ function setupPicking() {
         return rect;
     }
 
+    const NON_CLICKABLE = new Set(['STAIRS', 'ELEVATOR']);
+
     function intersectZone() {
         raycaster.setFromCamera(pointer, camera);
         const hits = raycaster.intersectObjects(getZoneMeshes(), false);
-        return hits.length ? hits[0].object : null;
+        const hit = hits.find((h) => !NON_CLICKABLE.has(h.object.userData.type));
+        return hit ? hit.object : null;
     }
 
     canvas.addEventListener('pointermove', (event) => {

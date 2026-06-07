@@ -11,6 +11,79 @@ const HIGHLIGHT_COLOR = 0xFF3399;
 function zoneGray(type, idx) { return ZONE_PALETTE[idx % ZONE_PALETTE.length]; }
 
 // ---------------------------------------------------------------------------
+// Иконки зон — SVG → плоский меш на полу зоны, цвет #696868
+// ---------------------------------------------------------------------------
+const ICON_TYPE_MAP = {
+    EXHIBITION: 'brush',
+    SHOP:       'shop',
+    ENTRANCE:   'info',
+    CAFE:       'cafe',
+    WARDROBE:   'cloakroom',
+    RESTROOM:   'toilet',
+    CINEMA:     'cinema',
+    WORKSHOP:   'scissors',
+};
+
+// Переопределения по конкретному этажу (floorNumber → zoneType → iconKey)
+const ICON_FLOOR_OVERRIDE = new Map([
+    [1,   { EXHIBITION: 'collage'     }],  // Коллаж как способ мышления
+    [2,   { EXHIBITION: 'kinoglaz'    }],  // Дзига Вертов — Кино-Глаз
+    [3,   { EXHIBITION: 'dom21'       }],  // Дом 21
+    [4,   { EXHIBITION: 'draftfuture' }],  // Выставка 4-го этажа
+]);
+
+function _iconKeyForZone(z) {
+    const ov = ICON_FLOOR_OVERRIDE.get(z.floorNumber);
+    return (ov && ov[z.type]) || ICON_TYPE_MAP[z.type] || null;
+}
+const ICON_FLOOR_SIZE = 3.0;       // 4.5 / 1.5 = 3.0
+const ICON_FLOOR_Y    = 0.28;      // подъём над поверхностью зоны
+const ICON_COLOR      = '#FFFFFF'; // все иконки ярко-белые
+const _iconTexCache   = new Map();
+
+async function _loadSvgImage(iconKey) {
+    const svgRaw = await fetch(`/icons/${iconKey}.svg`).then(r => r.text());
+    const blob = new Blob([svgRaw], { type: 'image/svg+xml' });
+    const url  = URL.createObjectURL(blob);
+    const img  = new Image();
+    await new Promise((res) => { img.onload = res; img.onerror = res; img.src = url; });
+    URL.revokeObjectURL(url);
+    return img;
+}
+
+async function _loadIconTexture(iconKey) {
+    if (_iconTexCache.has(iconKey)) return _iconTexCache.get(iconKey);
+    try {
+        const img    = await _loadSvgImage(iconKey);
+        const S      = 128;
+        const canvas = document.createElement('canvas');
+        canvas.width = S; canvas.height = S;
+        const ctx    = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, S, S);
+        ctx.globalCompositeOperation = 'source-in';
+        ctx.fillStyle = ICON_COLOR;
+        ctx.fillRect(0, 0, S, S);
+        ctx.globalCompositeOperation = 'source-over';
+        const tex = new THREE.CanvasTexture(canvas);
+        _iconTexCache.set(iconKey, tex);
+        return tex;
+    } catch (e) {
+        console.warn(`Не удалось загрузить иконку ${iconKey}:`, e);
+        return null;
+    }
+}
+
+function _addIconFloor(parent, x, y, z, iconKey) {
+    const mat  = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0.9 });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(ICON_FLOOR_SIZE, ICON_FLOOR_SIZE), mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(x, y + ICON_FLOOR_Y, z);
+    mesh.renderOrder = 10;
+    parent.add(mesh);
+    _loadIconTexture(iconKey).then(tex => { if (tex) { mat.map = tex; mat.needsUpdate = true; } });
+}
+
+// ---------------------------------------------------------------------------
 // Калибровочные параметры наложений — экспортируются для live-редактора.
 // Меняй через calibrator.js, не вручную.
 // ---------------------------------------------------------------------------
@@ -28,6 +101,28 @@ export const CALIBRATION = {
     },
 
     entrancePos: { x: 24.17, z: 5.58 },
+
+    // Пять блоков пристройки на антресоли 1.5 (откалиброванные координаты)
+    floor15Blocks: [
+        { zoneId: 9,  name: 'Туалеты (антресоль)',    type: 'RESTROOM',  floorNumber: 1.5, iconKey: 'toilet',        description: 'Санузлы антресольного уровня.',                                      x: 31.25, z: -0.25,   w:  5.25, d: 14.3,  color: '#FFFFFF' },
+        { zoneId: 8,  name: 'Гардероб',               type: 'WARDROBE',  floorNumber: 1.5, iconKey: 'cloakroom',     description: 'Бесплатный гардероб. Камеры хранения. Обязателен при посещении выставок.', x: 40.25, z:  3.5,    w: 12.75, d:  6.75, color: '#C8C8C8' },
+        { zoneId: 40, name: 'Куллер',                 type: 'PUBLIC',    floorNumber: 1.5, iconKey: 'water',         description: 'Питьевой куллер на антресольном уровне.',                            x: 38.25, z: -3.575,  w:  8.8,  d:  7.15, color: '#E8E8E8' },
+        { zoneId: 41, name: 'Детская мастерская А',   type: 'WORKSHOP',  floorNumber: 1.5, iconKey: 'scissors',      description: 'Детская мастерская. Занятия для детей по декоративно-прикладному искусству.', x: 50.5,  z:  3.25,   w:  8.0,  d:  7.15, color: '#A8A8A8' },
+        { zoneId: 42, name: 'Детская мастерская Б',   type: 'WORKSHOP',  floorNumber: 1.5, iconKey: 'scissors',      description: 'Детская мастерская. Творческие занятия и игровые программы для детей.',        x: 48.5,  z: -3.5,    w: 12.0,  d:  7.15, color: '#D4D4D4' },
+    ],
+
+    // Три блока пристройки на антресоли 2.5
+    floor25Blocks: [
+        { zoneId: 18, name: 'Туалеты (переход 2½)',   type: 'RESTROOM',  floorNumber: 2.5, iconKey: 'toilet',        description: 'Санузел на промежуточной площадке между 2-м и 3-м этажами.',          x: 35.0, z:  3.85, w: 13.0, d:  7.5, color: '#FFFFFF' },
+        { zoneId: 43, name: 'Гардероб (переход 2½)',  type: 'WARDROBE',  floorNumber: 2.5, iconKey: 'cloakroom',     description: 'Гардероб на промежуточной площадке.',                                 x: 35.0, z: -3.85, w: 13.0, d:  7.5, color: '#D4D4D4' },
+        { zoneId: 44, name: 'Администрация',          type: 'PUBLIC',    floorNumber: 2.5, iconKey: 'administration', description: 'Административные помещения центра.',                                  x: 48.0, z:  0.0,  w: 13.0, d: 15.0, color: '#B0B0B0' },
+    ],
+
+    // Два блока пристройки 1-го этажа: кафе (основной блок) + туалет (полоска правого края)
+    floor1Blocks: [
+        { zoneId: 38, name: 'Зотов.Кафе',        type: 'CAFE',     floorNumber: 1, iconKey: 'cafe',   description: 'Кафе «Зотов» в пристройке первого этажа. Авторское меню, завтраки, обеды и десерты в атмосфере конструктивизма. Работает вт–вс 11:00–22:00, пн — выходной. Бронирование: cafe@centrezotov.ru', x: 41.8, z: -2.625, w: 27.3, d:  9.70, color: '#D9D9D9' },
+        { zoneId: 45, name: 'Туалеты (1 этаж)',   type: 'RESTROOM', floorNumber: 1, iconKey: 'toilet', description: 'Санузлы первого этажа. В пристройке рядом с кафе.',                                                                                                                                               x: 41.8, z:  4.85,  w: 27.3, d:  5.25, color: '#FFFFFF' },
+    ],
 };
 
 // Y-позиции этажей (исходные, до масштабирования)
@@ -57,7 +152,7 @@ const ANNEX_SIZES = new Map([
 // горизонтальным габаритом в диаметр цилиндра (2 * R_OUTER).
 // Калибруется визуально — крути эти значения, если каркас не совпал с секторами.
 // ---------------------------------------------------------------------------
-const MODEL_URL = 'model/zotov-naked.glb';
+const MODEL_URL = 'model/zolotov-donedonedone-nakd.glb';
 const MODEL_FIT = {
     targetDiameter: R_OUTER * 2, // горизонтальный габарит модели → диаметр застройки
     extraScale: 2.0,             // доп. множитель масштаба
@@ -124,16 +219,24 @@ export async function buildBuilding(floors, zones) {
         if (isMezzanine(floor.number)) {
             const mezzZones = byFloor.get(floor.number) || [];
             indexMezzanineCirculationZones(mezzZones, baseY);
-            addAnnexZoneMeshes(group, mezzZones, floor.number, baseY);
+            if (floor.number === 1.5) {
+                addFloor15Blocks(group, baseY);
+            } else if (floor.number === 2.5) {
+                addFloor25Blocks(group, baseY);
+            } else {
+                addAnnexZoneMeshes(group, mezzZones, floor.number, baseY);
+            }
         } else {
             const floorZones = byFloor.get(floor.number) || [];
             let colorIdx = 0;
             for (const z of floorZones) {
                 if (z.radiusInner >= R_OUTER) continue; // аннекс — отдельно
-                if (z.type === 'ELEVATOR') { indexCirculationZone(z, baseY); continue; }
+                if (z.type === 'ELEVATOR' || z.type === 'STAIRS') { indexCirculationZone(z, baseY); continue; }
                 addZoneMesh(group, z, baseY, height, colorIdx++);
             }
-            if (ANNEX_SIZES.has(floor.number)) {
+            if (floor.number === 1) {
+                addFloor1Blocks(group, baseY);
+            } else if (ANNEX_SIZES.has(floor.number)) {
                 const annexZones = floorZones.filter(z => z.radiusInner >= R_OUTER);
                 if (annexZones.length) addAnnexZoneMeshes(group, annexZones, floor.number, baseY);
             }
@@ -300,6 +403,17 @@ function addZoneMesh(group, z, baseY, floorHeight, colorIdx = 0) {
         ? new THREE.Vector3(CALIBRATION.entrancePos.x, baseY + 0.6, CALIBRATION.entrancePos.z)
         : new THREE.Vector3(rc * Math.cos(ang) + CALIBRATION.zoneXOffset, baseY + 0.6, -rc * Math.sin(ang));
     zoneIndex.set(z.id, { data: z, mesh, center, baseColor, floorNumber: z.floorNumber });
+
+    const iconKey = _iconKeyForZone(z);
+    if (iconKey) {
+        // Геометрия кольца смещена на +π/2 относительно data-углов — учитываем при расчёте центра иконки
+        const iconAng = (z.type === 'ENTRANCE' && CALIBRATION.entrancePos)
+            ? null
+            : ang + Math.PI / 2;
+        const ix = iconAng !== null ? rc * Math.cos(iconAng) + CALIBRATION.zoneXOffset : center.x;
+        const iz = iconAng !== null ? -rc * Math.sin(iconAng) : center.z;
+        _addIconFloor(group, ix, baseY, iz, iconKey);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +443,39 @@ function indexMezzanineCirculationZones(zones, baseY) {
         indexCirculationZone(z, baseY);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Общий рендерер для кастомных блоков пристройки — регистрирует меши и zoneIndex.
+// ---------------------------------------------------------------------------
+function addCustomBlocks(group, blocks, baseY) {
+    for (const blk of blocks) {
+        const baseColor = new THREE.Color(blk.color);
+        const mat = new THREE.MeshStandardMaterial({
+            color: baseColor,
+            transparent: true, opacity: 0.85,
+            side: THREE.DoubleSide, metalness: 0.1, roughness: 0.7,
+            emissive: new THREE.Color(0x000000),
+        });
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(blk.w, blk.d), mat);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(blk.x, baseY + 0.15, blk.z);
+        mesh.userData = { zoneId: blk.zoneId, type: blk.type, name: blk.name, floorNumber: blk.floorNumber };
+        group.add(mesh);
+        zoneMeshes.push(mesh);
+
+        const center = new THREE.Vector3(blk.x, baseY + 0.6, blk.z);
+        zoneIndex.set(blk.zoneId, {
+            data: { id: blk.zoneId, name: blk.name, type: blk.type, floorNumber: blk.floorNumber, description: blk.description },
+            mesh, center, baseColor, floorNumber: blk.floorNumber,
+        });
+
+        if (blk.iconKey) _addIconFloor(group, blk.x, baseY, blk.z, blk.iconKey);
+    }
+}
+
+function addFloor1Blocks(group, baseY)  { addCustomBlocks(group, CALIBRATION.floor1Blocks,  baseY); }
+function addFloor15Blocks(group, baseY) { addCustomBlocks(group, CALIBRATION.floor15Blocks, baseY); }
+function addFloor25Blocks(group, baseY) { addCustomBlocks(group, CALIBRATION.floor25Blocks, baseY); }
 
 // ---------------------------------------------------------------------------
 // Зоны пристройки (антресольные уровни)
@@ -376,6 +523,9 @@ function addAnnexZoneMeshes(group, zones, floorNumber, baseY) {
 
         const center = new THREE.Vector3(centerX, effectiveBaseY + 0.6, zoneCenterZ);
         zoneIndex.set(z.id, { data: z, mesh, center, baseColor, floorNumber: z.floorNumber });
+
+        const iconKey = _iconKeyForZone(z);
+        if (iconKey) _addIconFloor(group, centerX, effectiveBaseY, zoneCenterZ, iconKey);
 
         zOffset += zoneWidth;
     }
@@ -463,7 +613,6 @@ function addStairLadder(shaftPos, totalH) {
     });
     const railOffset = 0.55;
 
-    // Два вертикальных поручня
     const railGeo = new THREE.CylinderGeometry(0.08, 0.08, totalH, 8);
     for (const dx of [-railOffset, railOffset]) {
         const rail = new THREE.Mesh(railGeo, mat);
@@ -471,7 +620,6 @@ function addStairLadder(shaftPos, totalH) {
         building.add(rail);
     }
 
-    // Горизонтальные ступени через InstancedMesh
     const rungSpacing = 0.75;
     const count = Math.floor(totalH / rungSpacing) + 1;
     const rungGeo = new THREE.CylinderGeometry(0.055, 0.055, railOffset * 2, 6);
@@ -530,16 +678,24 @@ export function rebuildOverlays(floors, zones) {
         if (isMezzanine(floor.number)) {
             const mezzZones = byFloor.get(floor.number) || [];
             indexMezzanineCirculationZones(mezzZones, baseY);
-            addAnnexZoneMeshes(group, mezzZones, floor.number, baseY);
+            if (floor.number === 1.5) {
+                addFloor15Blocks(group, baseY);
+            } else if (floor.number === 2.5) {
+                addFloor25Blocks(group, baseY);
+            } else {
+                addAnnexZoneMeshes(group, mezzZones, floor.number, baseY);
+            }
         } else {
             const floorZones = byFloor.get(floor.number) || [];
             let colorIdx = 0;
             for (const z of floorZones) {
                 if (z.radiusInner >= R_OUTER) continue; // аннекс — отдельно
-                if (z.type === 'ELEVATOR') { indexCirculationZone(z, baseY); continue; }
+                if (z.type === 'ELEVATOR' || z.type === 'STAIRS') { indexCirculationZone(z, baseY); continue; }
                 addZoneMesh(group, z, baseY, height, colorIdx++);
             }
-            if (ANNEX_SIZES.has(floor.number)) {
+            if (floor.number === 1) {
+                addFloor1Blocks(group, baseY);
+            } else if (ANNEX_SIZES.has(floor.number)) {
                 const annexZones = floorZones.filter(z => z.radiusInner >= R_OUTER);
                 if (annexZones.length) addAnnexZoneMeshes(group, annexZones, floor.number, baseY);
             }
