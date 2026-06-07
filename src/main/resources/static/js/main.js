@@ -5,7 +5,6 @@ import { camera, renderer, raycaster, onFrame, startLoop } from './scene.js';
 import { buildBuilding, getZoneMeshes, pulse } from './building.js';
 import { initUi, showZone, showTooltip, hideTooltip } from './ui.js';
 import { initChat } from './chat.js';
-import { initCalibrator } from './calibrator.js';
 
 const pointer = new THREE.Vector2();
 let hovered = null;
@@ -27,7 +26,6 @@ async function boot() {
         }
         await buildBuilding(floors, zones);
         initUi(floors, zones, eventsMap);
-        initCalibrator(floors, zones);
         loading.hidden = true;
     } catch (e) {
         loading.textContent = 'Ошибка загрузки данных: ' + e.message;

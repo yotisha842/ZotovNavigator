@@ -10,6 +10,10 @@ const ZONE_PALETTE = ['#FFFFFF', '#D9D9D9', '#B2B2B2', '#838080'];
 const HIGHLIGHT_COLOR = 0xFF3399;
 function zoneGray(type, idx) { return ZONE_PALETTE[idx % ZONE_PALETTE.length]; }
 
+const ZONE_COLOR_OVERRIDE = new Map([
+    [1, '#696868'], // Выставка с коллажем, 1-й этаж
+]);
+
 // ---------------------------------------------------------------------------
 // Иконки зон — SVG → плоский меш на полу зоны, цвет #696868
 // ---------------------------------------------------------------------------
@@ -120,8 +124,8 @@ export const CALIBRATION = {
 
     // Два блока пристройки 1-го этажа: кафе (основной блок) + туалет (полоска правого края)
     floor1Blocks: [
-        { zoneId: 38, name: 'Зотов.Кафе',        type: 'CAFE',     floorNumber: 1, iconKey: 'cafe',   description: 'Кафе «Зотов» в пристройке первого этажа. Авторское меню, завтраки, обеды и десерты в атмосфере конструктивизма. Работает вт–вс 11:00–22:00, пн — выходной. Бронирование: cafe@centrezotov.ru', x: 41.8, z: -2.625, w: 27.3, d:  9.70, color: '#D9D9D9' },
-        { zoneId: 45, name: 'Туалеты (1 этаж)',   type: 'RESTROOM', floorNumber: 1, iconKey: 'toilet', description: 'Санузлы первого этажа. В пристройке рядом с кафе.',                                                                                                                                               x: 41.8, z:  4.85,  w: 27.3, d:  5.25, color: '#FFFFFF' },
+        { zoneId: 38, name: 'Зотов.Кафе',        type: 'CAFE',     floorNumber: 1, iconKey: 'cafe',   description: 'Кафе «Зотов» в пристройке первого этажа. Авторское меню, завтраки, обеды и десерты в атмосфере конструктивизма. Работает вт–вс 11:00–22:00, пн — выходной. Бронирование: cafe@centrezotov.ru', x: 39.175, z: 0, w: 22.05, d: 14.95, color: '#D9D9D9' },
+        { zoneId: 45, name: 'Туалеты (1 этаж)',   type: 'RESTROOM', floorNumber: 1, iconKey: 'toilet', description: 'Санузлы первого этажа. В пристройке рядом с кафе.',                                                                                                                                               x: 52.825, z: 0,     w:  5.25, d: 14.95, color: '#FFFFFF' },
     ],
 };
 
@@ -382,7 +386,7 @@ function addZoneMesh(group, z, baseY, floorHeight, colorIdx = 0) {
     const segs = Math.max(6, Math.round((z.angleEnd - z.angleStart) / 4));
 
     const geo       = new THREE.RingGeometry(inner, outer, segs, 1, thetaStart, thetaLength);
-    const baseColor = new THREE.Color(zoneGray(z.type, colorIdx));
+    const baseColor = new THREE.Color(ZONE_COLOR_OVERRIDE.get(z.id) ?? zoneGray(z.type, colorIdx));
     const mat = new THREE.MeshStandardMaterial({
         color: baseColor,
         transparent: true, opacity: 0.85,
