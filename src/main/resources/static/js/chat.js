@@ -88,9 +88,9 @@ async function doSend(text, msgsEl, input) {
         const fromId = resolveFromText(text);
         if (fromId) {
             push(msgsEl, 'user', text);
+            const savedToId = pendingToId;
             pendingToId = null;
-            await buildAndShowRoute(fromId, null /* будет запросить toId далее */, msgsEl);
-            // В данном случае fromId задан, toId нет — просто сохраним историю и продолжим
+            await buildAndShowRoute(fromId, savedToId, msgsEl);
             input.disabled = false;
             input.focus();
             return;
