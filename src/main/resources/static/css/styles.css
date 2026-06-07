@@ -387,6 +387,18 @@ body {
 .event-card__check { float: right; }
 .event-card input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
 
+.events-divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 0 10px; color: var(--gray);
+}
+.events-divider::before, .events-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--line);
+}
+.events-divider span {
+    font-family: var(--font-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;
+}
+
 /* ---------- Расписание кинозала ---------- */
 .cinema-schedule {
     margin: 4px 0 16px;

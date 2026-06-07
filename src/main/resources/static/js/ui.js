@@ -1,11 +1,11 @@
 // UI-слой: панели, поиск, афиша, режимы, отображение маршрута. Связывает DOM, API и 3D.
 import { api } from './api.js';
 import {
-    setFloorFocus, highlightZones, getZoneData, allZoneData,
+    setFloorFocus, highlightZones, getZoneData,
     zoneCenterWorld, getFloorMeta, setPulse,
 } from './building.js';
 import { drawRoute, clearRoute } from './routing.js';
-import { flyTo, setCameraViewOffset } from './scene.js';
+import { flyTo, resetCamera, setCameraViewOffset } from './scene.js';
 import * as THREE from 'three';
 
 const ZONE_LABEL = {
@@ -90,12 +90,12 @@ function fmtDateRange(startIso, endIso) {
     if (!startIso) return '';
     const s = new Date(startIso);
     const e = endIso ? new Date(endIso) : null;
-    const fmt = (d) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(d);
+    const fmtD = (d) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(d);
     const diffDays = e ? (e - s) / 86400000 : 0;
-    if (diffDays > 1 && e) return `${fmt(s)} — ${fmt(e)}`;
-    return new Intl.DateTimeFormat('ru-RU', {
-        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-    }).format(s);
+    if (diffDays > 1) return `${fmtD(s)} — ${fmtD(e)}`;
+    const dateStr = fmtD(s);
+    if (e && diffDays > 0) return `${dateStr}, ${fmtTime(startIso)}–${fmtTime(endIso)}`;
+    return `${dateStr}, ${fmtTime(startIso)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -167,10 +167,14 @@ function selectFloor(number) {
     const meta = number != null ? getFloorMeta(number) : null;
     if (meta) {
         const mezz = !Number.isInteger(number);
-        if (isMobile()) {
+        if (mezz) {
+            // Пристройка — зоны смещены по +X (~36 у.е.), нужен смещённый таргет
+            const tgt = new THREE.Vector3(36, meta.baseY + 2, 0);
+            flyTo(tgt, isMobile() ? 30 : 26, meta.baseY + (isMobile() ? 28 : 20));
+        } else if (isMobile()) {
             flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), 68, meta.baseY + 38);
         } else {
-            flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), mezz ? 38 : 46, meta.baseY + (mezz ? 18 : 26));
+            flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), 46, meta.baseY + 26);
         }
     } else {
         flyTo(new THREE.Vector3(0, 12, 0), isMobile() ? 74 : 60, isMobile() ? 52 : 42);
@@ -286,13 +290,13 @@ function flipIn() {
 
 function renderCategoryList() {
     const items = [
-        { key: 'all',        label: 'Ближайшие события' },
+        { key: 'all',        label: 'Текущие события' },
         { key: 'EXHIBITION', label: 'Выставки' },
-        { key: 'LECTURE',    label: 'Экскурсии' },
-        { key: 'OTHER',      label: 'События' },
         { key: 'FILM',       label: 'Кино' },
         { key: 'CONCERT',    label: 'Театр' },
+        { key: 'LECTURE',    label: 'Лекции' },
         { key: 'WORKSHOP',   label: 'Детям' },
+        { key: 'OTHER',      label: 'События' },
     ];
     const btns = items.map((it) => `
         <button class="category-item${flip.activeCategory === it.key ? ' is-active' : ''}" data-cat="${it.key}">
@@ -311,7 +315,8 @@ function renderCategoryList() {
 function openEventsMenu() {
     if (flip.mode === 'categories') return;
     el.eventsMenuToggle.classList.add('is-active');
-    el.panel.classList.remove('panel--peek');
+    el.panel.classList.remove('panel--peek', 'panel--chat');
+    el.chatHeaderBtn.classList.remove('is-active');
 
     if (flip.mode === 'closed') {
         el.panel.hidden = false;
@@ -363,8 +368,9 @@ export async function drawRouteOnly(toZoneId, fromZoneIdOverride = null) {
     setFloorFocus(null);
     setActiveFloorBtn(null);
     state.selectedFloor = null;
-    highlightZones(new Set([toZoneId]));
-    setPulse([toZoneId]);
+    const destZoneId = resp.steps.length > 0 ? resp.steps[resp.steps.length - 1].zoneId : toZoneId;
+    highlightZones(new Set([destZoneId]));
+    setPulse([destZoneId]);
     if (isMobile()) {
         flyTo(new THREE.Vector3(0, 10, 0), 74, 52);
     } else {
@@ -375,7 +381,7 @@ export async function drawRouteOnly(toZoneId, fromZoneIdOverride = null) {
     return resp;
 }
 
-// Закрытие панели = полный сброс: убираем маршрут и подсветку.
+// Закрытие панели = полный сброс: убираем маршрут, подсветку и возвращаем камеру.
 function hidePanel() {
     el.panel.hidden = true;
     el.panel.classList.remove('panel--chat', 'panel--peek');
@@ -383,6 +389,7 @@ function hidePanel() {
     clearRoute();
     highlightZones(null);
     setPulse([]);
+    resetCamera();
     flip.mode = 'closed';
     flip.activeCategory = null;
     flip.openedViaCategory = false;
@@ -509,7 +516,7 @@ export function showZone(zoneId) {
             </div>` : '';
 
         detailHtml = `
-            <span class="tag">Кинозал</span>
+            <span class="tag">${escapeHtml(z.name)}</span>
             <div class="cinema-schedule">
                 <div class="cinema-schedule__label">Сегодня</div>
                 ${filmsHtml}
@@ -610,7 +617,9 @@ function renderRoute(resp) {
         flyTo(c, 58, c.y + 24);
     }
 
-    const stepsHtml = resp.steps.map((s) => `
+    // Убираем промежуточные «Пройдите через» — оставляем старт, переходы между этажами и цель
+    const compressed = resp.steps.filter((s) => !s.instruction.startsWith('Пройдите'));
+    const stepsHtml = compressed.map((s) => `
         <li class="step">
             <div class="step__text">${escapeHtml(s.instruction)}</div>
             <div class="step__floor">${escapeHtml(ZONE_LABEL[s.zoneType] || '')} · ${fmtFloorLabel(s.floorNumber)}</div>
@@ -659,14 +668,24 @@ function renderRoute(resp) {
 // Афиша / план дня
 // ---------------------------------------------------------------------------
 const CATEGORY_LABEL = {
-    all: 'Ближайшие события',
+    all: 'Текущие события',
     EXHIBITION: 'Выставки',
-    LECTURE: 'Экскурсии',
+    LECTURE: 'Лекции',
     OTHER: 'События',
     FILM: 'Кино',
     CONCERT: 'Театр',
     WORKSHOP: 'Детям',
 };
+
+function makeEventCard(ev, planMode) {
+    return `
+        <div class="event-card" data-id="${ev.id}" data-zone="${ev.zoneId}">
+            ${planMode ? `<label class="event-card__check"><input type="checkbox" data-zone="${ev.zoneId}"></label>` : ''}
+            <div class="event-card__type">${escapeHtml(EVENT_LABEL[ev.type] || ev.type)}</div>
+            <div class="event-card__title">${escapeHtml(ev.title)}</div>
+            <div class="event-card__meta">${fmtDateRange(ev.startTime, ev.endTime)} · ${escapeHtml(ev.zoneName)} · ${fmtFloorLabel(ev.floorNumber)}</div>
+        </div>`;
+}
 
 async function openAfisha(planMode, categoryFilter = 'all') {
     state.planMode = planMode;
@@ -678,47 +697,59 @@ async function openAfisha(planMode, categoryFilter = 'all') {
         events = events.filter((ev) => ev.type === categoryFilter);
     }
 
-    // Отдельные сеансы (короче 1 дня) — показываем max 1 на кинозал, max 2 суммарно
+    const now = new Date();
+
+    // Короткие сеансы кино — показываем только 2 ближайших будущих
     const isScreening = (ev) => ev.type === 'FILM' &&
         (new Date(ev.endTime) - new Date(ev.startTime)) < 86400000;
     const screenings = events.filter(isScreening);
-    const rest = events.filter((ev) => !isScreening(ev));
-    if (screenings.length) {
-        const seen = new Set();
-        const capped = screenings.filter((ev) => {
-            if (seen.has(ev.zoneId) || seen.size >= 2) return false;
-            seen.add(ev.zoneId);
-            return true;
-        });
-        events = [...rest, ...capped].sort((a, b) =>
+    if (screenings.length > 2) {
+        const futureScreenings = screenings.filter((ev) => new Date(ev.startTime) > now);
+        const rest = events.filter((ev) => !isScreening(ev));
+        events = [...rest, ...futureScreenings.slice(0, 2)].sort((a, b) =>
             new Date(a.startTime) - new Date(b.startTime));
     }
 
-    const panelTag = planMode ? 'План дня' : (CATEGORY_LABEL[categoryFilter] || 'Мероприятия');
+    // Делим на «идёт сейчас» и «скоро»
+    const ongoing = events.filter((ev) => new Date(ev.startTime) <= now && new Date(ev.endTime) >= now);
+    const upcoming = events.filter((ev) => new Date(ev.startTime) > now);
+
+    const panelTag   = planMode ? 'Персонализированный маршрут' : (CATEGORY_LABEL[categoryFilter] || 'Мероприятия');
     const panelTitle = planMode ? 'Соберите свой день' : (CATEGORY_LABEL[categoryFilter] || 'Мероприятия');
-    const panelHint = planMode
+    const panelHint  = planMode
         ? 'Отметьте события — построим оптимальный маршрут'
         : 'Нажмите на событие, чтобы проложить маршрут';
 
-    if (!events.length) {
-        showPanel(`<span class="tag tag--muted">${escapeHtml(panelTag)}</span><h2>${escapeHtml(panelTitle)}</h2><div class="muted">Ближайших событий в этой категории нет</div>`);
+    // Вкладка «Текущие события» показывает только ongoing
+    const showList = categoryFilter === 'all' ? ongoing : [...ongoing, ...upcoming];
+
+    if (!showList.length) {
+        showPanel(`<span class="tag tag--muted">${escapeHtml(panelTag)}</span><h2>${escapeHtml(panelTitle)}</h2><div class="muted">Сейчас нет мероприятий в этой категории</div>`);
         return;
     }
 
-    const cards = events.map((ev) => `
-        <div class="event-card" data-id="${ev.id}" data-zone="${ev.zoneId}">
-            ${planMode ? `<label class="event-card__check"><input type="checkbox" data-zone="${ev.zoneId}"></label>` : ''}
-            <div class="event-card__type">${escapeHtml(EVENT_LABEL[ev.type] || ev.type)}</div>
-            <div class="event-card__title">${escapeHtml(ev.title)}</div>
-            <div class="event-card__meta">${fmtDateTime(ev.startTime)} · ${escapeHtml(ev.zoneName)} · ${fmtFloorLabel(ev.floorNumber)}</div>
-        </div>`).join('');
+    let cardsHtml = '';
+    if (categoryFilter === 'all') {
+        // Только текущие
+        cardsHtml = ongoing.map((ev) => makeEventCard(ev, planMode)).join('');
+    } else {
+        // Идёт сейчас
+        if (ongoing.length) {
+            cardsHtml += ongoing.map((ev) => makeEventCard(ev, planMode)).join('');
+        }
+        // Скоро
+        if (upcoming.length) {
+            cardsHtml += `<div class="events-divider"><span>Скоро</span></div>`;
+            cardsHtml += upcoming.map((ev) => makeEventCard(ev, planMode)).join('');
+        }
+    }
 
     showPanel(`
         <span class="tag">${escapeHtml(panelTag)}</span>
         <h2>${escapeHtml(panelTitle)}</h2>
         <div class="muted">${panelHint}</div>
-        ${cards}
-        ${planMode ? '<button class="btn btn--primary" data-act="plan">Построить план дня</button>' : ''}
+        ${cardsHtml}
+        ${planMode ? '<button class="btn btn--primary" data-act="plan">Построить маршрут</button>' : ''}
     `);
 
     el.panelContent.querySelectorAll('.event-card').forEach((card) => {
@@ -755,73 +786,39 @@ function setMode(mode) {
     setPulse([]);
     state.plan.clear();
 
-    state.preferElevator = (mode === 'kids');
+    state.preferElevator = false;
+    highlightZones(null);
 
-    if (mode === 'first') {
-        selectFloor(null);
-        const ids = allZoneData()
-            .filter((z) => ['ENTRANCE', 'WARDROBE', 'RESTROOM', 'PUBLIC', 'SHOP'].includes(z.type))
-            .map((z) => z.id);
-        highlightZones(new Set(ids));
-        showPanel(`
-            <span class="tag">Я впервые</span>
-            <h2>Добро пожаловать в Центр «Зотов»</h2>
-            <p>Подсвечены ключевые точки: вход, гардероб, касса, книжный магазин и туалеты.
-            Нажмите на любую зону, чтобы узнать о ней больше и проложить маршрут.</p>
-            <div class="meta-row"><span>Здание</span><b>5 этажей, круглая форма</b></div>
-            <div class="meta-row"><span>Старт</span><b>Главный вход, 1 этаж</b></div>
-        `);
-    } else if (mode === 'event') {
-        highlightZones(null);
-        openAfisha(false);
-    } else if (mode === 'all') {
+    if (mode === 'all') {
         buildGrandTour();
-    } else if (mode === 'kids') {
-        selectFloor(null);
-        const ids = allZoneData()
-            .filter((z) => ['CAFE', 'RESTROOM'].includes(z.type))
-            .map((z) => z.id);
-        highlightZones(new Set(ids));
-        openKidsAfisha();
     } else if (mode === 'plan') {
-        highlightZones(null);
         openAfisha(true);
     }
 }
 
 async function buildGrandTour() {
-    const exhibitions = allZoneData().filter((z) => z.type === 'EXHIBITION').map((z) => z.id);
-    if (!exhibitions.length) return;
+    let events;
+    try { events = await api.upcoming(); } catch (e) {
+        showPanel(`<h2>Не удалось загрузить афишу</h2><p>${escapeHtml(e.message)}</p>`);
+        return;
+    }
+    const now = new Date();
+    const ongoing = events.filter((ev) => new Date(ev.startTime) <= now && new Date(ev.endTime) >= now);
+    const zoneIds = [...new Set(ongoing.map((ev) => ev.zoneId))];
+    if (!zoneIds.length) {
+        showPanel(`<span class="tag">Посмотреть все</span><h2>Маршрут по всем мероприятиям</h2><div class="muted">Сейчас нет активных мероприятий</div>`);
+        return;
+    }
     try {
-        const resp = await api.routeMulti(state.startZoneId, exhibitions, true, state.preferElevator);
+        const resp = await api.routeMulti(state.startZoneId, zoneIds, true, state.preferElevator);
         renderRoute(resp);
         el.panelContent.insertAdjacentHTML('afterbegin',
-            '<div class="muted">Рекомендованный обход всех выставочных залов</div>');
+            '<div class="muted">Маршрут по всем текущим мероприятиям</div>');
     } catch (e) {
-        showPanel(`<h2>Не удалось построить обход</h2><p>${escapeHtml(e.message)}</p>`);
+        showPanel(`<h2>Не удалось построить маршрут</h2><p>${escapeHtml(e.message)}</p>`);
     }
 }
 
-async function openKidsAfisha() {
-    let events = [];
-    try { events = await api.upcoming(); } catch (_) { /* ignore */ }
-    const workshops = events.filter((e) => e.type === 'WORKSHOP');
-    const cards = workshops.map((ev) => `
-        <div class="event-card" data-zone="${ev.zoneId}">
-            <div class="event-card__type">${EVENT_LABEL[ev.type]}</div>
-            <div class="event-card__title">${escapeHtml(ev.title)}</div>
-            <div class="event-card__meta">${fmtDateTime(ev.startTime)} · ${escapeHtml(ev.zoneName)} · ${fmtFloorLabel(ev.floorNumber)}</div>
-        </div>`).join('');
-    showPanel(`
-        <span class="tag">С детьми</span>
-        <h2>Мастер-классы и удобства</h2>
-        <p>Подсвечены кафе и туалеты. Ниже — ближайшие детские мастер-классы.</p>
-        ${cards || '<div class="muted">Ближайших мастер-классов нет</div>'}
-    `);
-    el.panelContent.querySelectorAll('.event-card').forEach((card) => {
-        card.onclick = () => buildRouteTo(Number(card.dataset.zone));
-    });
-}
 
 // ---------------------------------------------------------------------------
 // Поиск

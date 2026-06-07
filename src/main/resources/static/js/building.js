@@ -111,7 +111,7 @@ export const CALIBRATION = {
         { zoneId: 9,  name: 'Туалеты (антресоль)',    type: 'RESTROOM',  floorNumber: 1.5, iconKey: 'toilet',        description: 'Санузлы антресольного уровня.',                                      x: 31.25, z: -0.25,   w:  5.25, d: 14.3,  color: '#FFFFFF' },
         { zoneId: 8,  name: 'Гардероб',               type: 'WARDROBE',  floorNumber: 1.5, iconKey: 'cloakroom',     description: 'Бесплатный гардероб. Камеры хранения. Обязателен при посещении выставок.', x: 40.25, z:  3.5,    w: 12.75, d:  6.75, color: '#C8C8C8' },
         { zoneId: 40, name: 'Куллер',                 type: 'PUBLIC',    floorNumber: 1.5, iconKey: 'water',         description: 'Питьевой куллер на антресольном уровне.',                            x: 38.25, z: -3.575,  w:  8.8,  d:  7.15, color: '#E8E8E8' },
-        { zoneId: 41, name: 'Детская мастерская А',   type: 'WORKSHOP',  floorNumber: 1.5, iconKey: 'scissors',      description: 'Детская мастерская. Занятия для детей по декоративно-прикладному искусству.', x: 50.5,  z:  3.25,   w:  8.0,  d:  7.15, color: '#A8A8A8' },
+        { zoneId: 41, name: 'Детская мастерская А',   type: 'WORKSHOP',  floorNumber: 1.5, iconKey: 'brush',         description: 'Детская мастерская. Занятия для детей по декоративно-прикладному искусству.', x: 50.5,  z:  3.25,   w:  8.0,  d:  7.15, color: '#A8A8A8' },
         { zoneId: 42, name: 'Детская мастерская Б',   type: 'WORKSHOP',  floorNumber: 1.5, iconKey: 'scissors',      description: 'Детская мастерская. Творческие занятия и игровые программы для детей.',        x: 48.5,  z: -3.5,    w: 12.0,  d:  7.15, color: '#D4D4D4' },
     ],
 
@@ -248,8 +248,10 @@ export async function buildBuilding(floors, zones) {
     }
 
     await loadBuildingModel();
+    await loadFacadeModel();
     addVerticalShafts();
     addEntranceMarker();
+    applyFacadeClipping();
     setFloorFocus(null);
 }
 
@@ -313,6 +315,124 @@ async function loadBuildingModel() {
 
     buildingModel = pivot;
     building.add(pivot);
+}
+
+// ---------------------------------------------------------------------------
+// ФАСАД: внешняя одетая модель (zotov-dressed.glb), поднимается по первому
+// скроллу над canvas, полностью скрывая скелет до начала анимации.
+// ---------------------------------------------------------------------------
+let facadeGroup          = null;
+let _facadeClipPlane     = null;
+let _facadeRevealStarted = false;
+let _facadeRevealDone    = false;
+let _facadeSlideY        = 0;
+let _facadeProgress      = 0;
+let _facadeInitialY      = 0;
+
+export function startFacadeReveal() {
+    if (_facadeRevealStarted || _facadeRevealDone || !facadeGroup) return;
+    _facadeRevealStarted = true;
+}
+
+export function isFacadeRevealDone() { return _facadeRevealDone; }
+
+onFrame((dt) => {
+    if (!_facadeRevealStarted || _facadeRevealDone || !facadeGroup) return;
+
+    _facadeProgress = Math.min(1, _facadeProgress + dt * 0.72); // ~1.4 сек
+
+    // Ease-in-out cubic
+    const t = _facadeProgress < 0.5
+        ? 4 * _facadeProgress ** 3
+        : 1 - (-2 * _facadeProgress + 2) ** 3 / 2;
+
+    facadeGroup.position.y = _facadeInitialY + t * _facadeSlideY;
+
+    // Clipping plane следует за нижним краем фасада
+    if (_facadeClipPlane) _facadeClipPlane.constant = facadeGroup.position.y;
+
+    if (_facadeProgress >= 1) {
+        _facadeRevealDone = true;
+
+        // Снимаем clipping со всех мешей здания
+        building.traverse((obj) => {
+            if (!obj.isMesh) return;
+            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+            mats.forEach((m) => { if (m) m.clippingPlanes = []; });
+        });
+        _facadeClipPlane = null;
+
+        scene.remove(facadeGroup);
+        facadeGroup.traverse((obj) => {
+            if (!obj.isMesh) return;
+            obj.geometry.dispose();
+            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+            mats.forEach((m) => m.dispose());
+        });
+        facadeGroup = null;
+    }
+});
+
+async function loadFacadeModel() {
+    if (!buildingModel) { _facadeRevealDone = true; return; }
+
+    // Мировые габариты уже позиционированного скелета — берём как эталон
+    const nakedBox    = new THREE.Box3().setFromObject(buildingModel);
+    const nakedSize   = nakedBox.getSize(new THREE.Vector3());
+    const nakedCenter = nakedBox.getCenter(new THREE.Vector3());
+
+    let gltf;
+    try {
+        gltf = await new GLTFLoader().loadAsync('model/zotov-dressed.glb');
+    } catch (e) {
+        console.error('[facade] не удалось загрузить:', e);
+        _facadeRevealDone = true;
+        return;
+    }
+
+    const model    = gltf.scene;
+    const rawBox   = new THREE.Box3().setFromObject(model);
+    const rawSize  = rawBox.getSize(new THREE.Vector3());
+    const rawCenter = rawBox.getCenter(new THREE.Vector3());
+
+    // Центрируем, ставим основание на Y=0
+    model.position.set(-rawCenter.x, -rawBox.min.y, -rawCenter.z);
+
+    // Масштабируем фасад так, чтобы горизонтальный габарит совпал со скелетом
+    const horizNaked = Math.max(nakedSize.x, nakedSize.z);
+    const horizRaw   = Math.max(rawSize.x, rawSize.z);
+    const k = horizRaw > 0 ? horizNaked / horizRaw : 1;
+
+    const pivot = new THREE.Group();
+    pivot.add(model);
+    pivot.scale.setScalar(k);
+    pivot.scale.y = k + 5 / rawSize.y; // высота +5 единиц, ширина не меняется
+    // Совмещаем центр фасада с центром скелета, нижний край — там же
+    pivot.position.set(nakedCenter.x, nakedBox.min.y, nakedCenter.z);
+
+    const worldBox    = new THREE.Box3().setFromObject(pivot);
+    const worldSize   = worldBox.getSize(new THREE.Vector3());
+    const worldCenter = worldBox.getCenter(new THREE.Vector3());
+
+    _facadeInitialY = pivot.position.y;
+    _facadeSlideY   = worldSize.y + 25; // высота фасада + буфер
+
+    facadeGroup = pivot;
+    scene.add(facadeGroup);
+
+    // Clipping plane создаём здесь, применяем позже — после addVerticalShafts/addEntranceMarker
+    _facadeClipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), _facadeInitialY);
+
+    console.log('[facade] размеры:', worldSize, 'slideY:', _facadeSlideY);
+}
+
+function applyFacadeClipping() {
+    if (!_facadeClipPlane) return;
+    building.traverse((obj) => {
+        if (!obj.isMesh) return;
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach((m) => { if (m) m.clippingPlanes = [_facadeClipPlane]; });
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -403,9 +523,10 @@ function addZoneMesh(group, z, baseY, floorHeight, colorIdx = 0) {
 
     const ang = deg2rad((z.angleStart + z.angleEnd) / 2);
     const rc  = (z.radiusInner + z.radiusOuter) / 2 * CALIBRATION.zoneRadiiScale;
+    const worldAng = ang + Math.PI / 2;
     const center = (z.type === 'ENTRANCE' && CALIBRATION.entrancePos)
         ? new THREE.Vector3(CALIBRATION.entrancePos.x, baseY + 0.6, CALIBRATION.entrancePos.z)
-        : new THREE.Vector3(rc * Math.cos(ang) + CALIBRATION.zoneXOffset, baseY + 0.6, -rc * Math.sin(ang));
+        : new THREE.Vector3(rc * Math.cos(worldAng) + CALIBRATION.zoneXOffset, baseY + 0.6, -rc * Math.sin(worldAng));
     zoneIndex.set(z.id, { data: z, mesh, center, baseColor, floorNumber: z.floorNumber });
 
     const iconKey = _iconKeyForZone(z);
@@ -429,10 +550,11 @@ function addZoneMesh(group, z, baseY, floorHeight, colorIdx = 0) {
 function indexCirculationZone(z, baseY) {
     const ang = deg2rad((z.angleStart + z.angleEnd) / 2);
     const rc  = (z.radiusInner + z.radiusOuter) / 2 * CALIBRATION.zoneRadiiScale;
+    const worldAng = ang + Math.PI / 2;
     const center = new THREE.Vector3(
-        rc * Math.cos(ang) + CALIBRATION.zoneXOffset,
+        rc * Math.cos(worldAng) + CALIBRATION.zoneXOffset,
         baseY + 0.6,
-        -rc * Math.sin(ang),
+        -rc * Math.sin(worldAng),
     );
     zoneIndex.set(z.id, {
         data: z, mesh: null, center,
@@ -459,6 +581,7 @@ function addCustomBlocks(group, blocks, baseY) {
             transparent: true, opacity: 0.85,
             side: THREE.DoubleSide, metalness: 0.1, roughness: 0.7,
             emissive: new THREE.Color(0x000000),
+            polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
         });
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(blk.w, blk.d), mat);
         mesh.rotation.x = -Math.PI / 2;
@@ -517,6 +640,7 @@ function addAnnexZoneMeshes(group, zones, floorNumber, baseY) {
             transparent: true, opacity: 0.85,
             side: THREE.DoubleSide, metalness: 0.1, roughness: 0.7,
             emissive: new THREE.Color(0x000000),
+            polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.rotation.x = -Math.PI / 2;
@@ -650,6 +774,10 @@ function clearOverlays() {
 }
 
 function clear() {
+    if (facadeGroup) { scene.remove(facadeGroup); facadeGroup = null; }
+    _facadeRevealStarted = false;
+    _facadeRevealDone    = false;
+    _facadeProgress      = 0;
     building.clear();
     floorGroups.clear();
     floorMeta.clear();

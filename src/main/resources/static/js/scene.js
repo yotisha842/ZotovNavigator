@@ -26,6 +26,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.localClippingEnabled = true;
 container.appendChild(renderer.domElement);
 
 export const controls = new OrbitControls(camera, renderer.domElement);
@@ -110,17 +111,49 @@ export function startLoop() {
     loop();
 }
 
-/** Плавно перевести камеру/таргет к новой цели. */
-export function flyTo(targetVec, distance = 48, height = 30) {
-    flyTo._to = { target: targetVec.clone(), distance, height, t: 0 };
+/** Плавно перевести камеру/таргет к новой цели.
+ *  posOverride — если задан, камера едет именно туда (distance/height игнорируются).
+ */
+export function flyTo(targetVec, distance = 48, height = 30, posOverride = null) {
+    flyTo._to = {
+        target: targetVec.clone(),
+        distance,
+        height,
+        pos: posOverride ? posOverride.clone() : null,
+        t: 0,
+    };
 }
+
+/** Вернуть камеру в дефолтное положение (обзор всего здания). */
+export function resetCamera() {
+    flyTo(new THREE.Vector3(0, 18, 0), 0, 0, new THREE.Vector3(85, 72, 85));
+}
+
 onFrame(() => {
     const s = flyTo._to;
     if (!s) return;
     s.t = Math.min(1, s.t + 0.04);
     const ease = 1 - Math.pow(1 - s.t, 3);
     controls.target.lerp(s.target, 0.08);
-    const desired = new THREE.Vector3(s.distance, s.height, s.distance);
-    camera.position.lerp(desired.add(new THREE.Vector3(s.target.x, 0, s.target.z)), 0.05 * ease + 0.02);
+
+    let desired;
+    if (s.pos) {
+        desired = s.pos;
+    } else {
+        // Радиальное направление: от центра сцены к таргету в горизонтальной плоскости.
+        // Если таргет в центре — сохраняем текущий азимут камеры.
+        const dir = new THREE.Vector3(s.target.x, 0, s.target.z);
+        if (dir.lengthSq() < 0.01) {
+            dir.copy(camera.position).setY(0);
+            if (dir.lengthSq() < 0.01) dir.set(1, 0, 1);
+        }
+        dir.normalize();
+        desired = new THREE.Vector3(
+            s.target.x + dir.x * s.distance,
+            s.height,
+            s.target.z + dir.z * s.distance,
+        );
+    }
+    camera.position.lerp(desired, 0.05 * ease + 0.02);
     if (s.t >= 1) flyTo._to = null;
 });

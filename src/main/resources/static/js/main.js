@@ -1,8 +1,8 @@
 // Точка входа: грузим данные, строим здание, включаем интерактив и цикл рендера.
 import * as THREE from 'three';
 import { api } from './api.js';
-import { camera, renderer, raycaster, onFrame, startLoop } from './scene.js';
-import { buildBuilding, getZoneMeshes, pulse } from './building.js';
+import { camera, renderer, raycaster, controls, onFrame, startLoop } from './scene.js';
+import { buildBuilding, getZoneMeshes, pulse, startFacadeReveal, isFacadeRevealDone } from './building.js';
 import { initUi, showZone, showTooltip, hideTooltip } from './ui.js';
 import { initChat } from './chat.js';
 
@@ -13,6 +13,7 @@ let startTime = performance.now();
 const eventsMap = new Map();
 
 async function boot() {
+    controls.enableZoom = false; // зум включится после анимации подъёма фасада
     const loading = document.getElementById('loading');
     try {
         const [floors, zones, events] = await Promise.all([
@@ -29,13 +30,48 @@ async function boot() {
         loading.hidden = true;
     } catch (e) {
         loading.textContent = 'Ошибка загрузки данных: ' + e.message;
+        controls.enableZoom = true;
         return;
     }
 
     setupPicking();
+    setupFacadeReveal();
     initChat();
     onFrame(() => pulse(0, (performance.now() - startTime) / 1000));
     startLoop();
+}
+
+function setupFacadeReveal() {
+    // Если фасад не загрузился — сразу разрешаем зум
+    if (isFacadeRevealDone()) {
+        controls.enableZoom = true;
+        return;
+    }
+
+    const canvas = renderer.domElement;
+    let done = false;
+
+    function onWheel(e) {
+        if (done) return;
+        e.preventDefault();
+        startFacadeReveal();
+    }
+    function onTouch(e) {
+        if (done) return;
+        startFacadeReveal();
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('touchstart', onTouch, { passive: true });
+
+    // Когда анимация завершилась — включаем зум и снимаем перехватчики
+    onFrame(() => {
+        if (!done && isFacadeRevealDone()) {
+            done = true;
+            controls.enableZoom = true;
+            canvas.removeEventListener('wheel', onWheel);
+            canvas.removeEventListener('touchstart', onTouch);
+        }
+    });
 }
 
 function setupPicking() {
