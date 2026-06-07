@@ -5,7 +5,7 @@ import {
     zoneCenterWorld, getFloorMeta, setPulse,
 } from './building.js';
 import { drawRoute, clearRoute } from './routing.js';
-import { flyTo, resetCamera, setCameraViewOffset } from './scene.js';
+import { flyTo, resetCamera, setCameraViewOffset, zoomToward } from './scene.js';
 import * as THREE from 'three';
 
 const ZONE_LABEL = {
@@ -462,7 +462,8 @@ export function showZone(zoneId) {
     if (isMobile()) {
         flyTo(new THREE.Vector3(0, 10, 0), 74, 52); // на мобильном — обзорная точка, модель целиком
     } else {
-        flyTo(c, 46, c.y + 22);
+        // Лёгкое приближение к зоне БЕЗ поворота модели (сохраняем текущий ракурс)
+        zoomToward(c, 0.9);
     }
 
     const isStart = state.startZoneId === zoneId;
