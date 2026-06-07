@@ -34,7 +34,7 @@ controls.dampingFactor = 0.08;
 controls.target.set(0, 18, 0);
 controls.minDistance = 20;
 controls.maxDistance = 180;
-controls.maxPolarAngle = Math.PI / 2.05; // не уходим под пол
+controls.maxPolarAngle = Math.PI / 2.05;
 controls.mouseButtons = {
     LEFT: THREE.MOUSE.ROTATE,
     MIDDLE: THREE.MOUSE.DOLLY,
@@ -58,9 +58,10 @@ const fill = new THREE.DirectionalLight(0xffffff, 0.35);
 fill.position.set(-30, 20, -20);
 scene.add(fill);
 
-// Площадка-основание (светлая)
-const groundMat = new THREE.MeshStandardMaterial({ color: 0xE8E8E8, roughness: 1, metalness: 0 });
-const ground = new THREE.Mesh(new THREE.CircleGeometry(90, 64), groundMat);
+
+// Платформа-основание
+const groundMat = new THREE.MeshStandardMaterial({ color: 0xD8D8D8, roughness: 1, metalness: 0 });
+const ground = new THREE.Mesh(new THREE.CircleGeometry(120, 64), groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.05;
 ground.receiveShadow = true;
