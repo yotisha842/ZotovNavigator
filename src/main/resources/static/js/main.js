@@ -5,12 +5,12 @@ import { camera, renderer, raycaster, onFrame, startLoop } from './scene.js';
 import { buildBuilding, getZoneMeshes, pulse } from './building.js';
 import { initUi, showZone, showTooltip, hideTooltip } from './ui.js';
 import { initChat } from './chat.js';
+import { initCalibrator } from './calibrator.js';
 
 const pointer = new THREE.Vector2();
 let hovered = null;
 let startTime = performance.now();
 
-// zoneId → Event[] (текущие и предстоящие события для каждой зоны)
 const eventsMap = new Map();
 
 async function boot() {
@@ -25,8 +25,9 @@ async function boot() {
             if (!eventsMap.has(ev.zoneId)) eventsMap.set(ev.zoneId, []);
             eventsMap.get(ev.zoneId).push(ev);
         }
-        buildBuilding(floors, zones);
+        await buildBuilding(floors, zones);
         initUi(floors, zones, eventsMap);
+        initCalibrator(floors, zones);
         loading.hidden = true;
     } catch (e) {
         loading.textContent = 'Ошибка загрузки данных: ' + e.message;
@@ -55,7 +56,6 @@ function setupPicking() {
         return hits.length ? hits[0].object : null;
     }
 
-    // Hover — tooltip + курсор
     canvas.addEventListener('pointermove', (event) => {
         const rect = updatePointer(event);
         const mesh = intersectZone();
@@ -73,14 +73,13 @@ function setupPicking() {
         }
     });
 
-    // Click — открыть зону (с защитой от перетаскивания орбиты)
     let downPos = null;
     canvas.addEventListener('pointerdown', (e) => { downPos = { x: e.clientX, y: e.clientY }; });
     canvas.addEventListener('pointerup', (event) => {
         if (!downPos) return;
         const moved = Math.hypot(event.clientX - downPos.x, event.clientY - downPos.y);
         downPos = null;
-        if (moved > 6) return; // это было вращение, не клик
+        if (moved > 6) return;
         updatePointer(event);
         const mesh = intersectZone();
         if (mesh && mesh.visible && mesh.material.opacity > 0.1) {

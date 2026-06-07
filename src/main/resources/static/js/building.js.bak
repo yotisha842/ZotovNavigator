@@ -6,28 +6,8 @@ import { scene, COLORS } from './scene.js';
 
 const deg2rad = (d) => (d * Math.PI) / 180;
 
-// ---------------------------------------------------------------------------
-// Калибровочные параметры наложений — экспортируются для live-редактора.
-// Меняй через calibrator.js, не вручную.
-// ---------------------------------------------------------------------------
-export const CALIBRATION = {
-    zoneRadiiScale: 0.96,
-    zoneYScale:     1.05,
-    zoneYOffset:    -2.5,
-    zoneXOffset:    -3.5,
-    floorYExtra: { 1: 3, 1.5: -1.5, 2: 3, 2.5: -6, 3: 1, 4: -1 },
-
-    annexFloors: {
-        1:   { xOffset: 9.5, yOffset: 0, scale: 1.15 },
-        1.5: { xOffset: 9.5, scale: 1.1 },
-        2.5: { xOffset: 9.5, scale: 1.4 },
-    },
-
-    entrancePos: { x: 24.17, z: 5.58 },
-};
-
-// Y-позиции этажей (исходные, до масштабирования)
-const FLOOR_BASE_Y_RAW = new Map([
+// Y-позиции этажей (в единицах Three.js)
+const FLOOR_BASE_Y = new Map([
     [1,   0],
     [1.5, 8],
     [2,   12],
@@ -74,9 +54,7 @@ const zoneIndex   = new Map();
 let maxFloor = 1;
 
 function floorBaseY(number) {
-    const raw   = FLOOR_BASE_Y_RAW.get(number) ?? (number - 1) * 7;
-    const extra = CALIBRATION.floorYExtra[number] ?? 0;
-    return raw * CALIBRATION.zoneYScale + CALIBRATION.zoneYOffset + extra;
+    return FLOOR_BASE_Y.get(number) ?? (number - 1) * 7;
 }
 function isMezzanine(number) { return !Number.isInteger(number); }
 
@@ -185,30 +163,40 @@ async function loadBuildingModel() {
 // ↗ ВХОД/EXIT у восточного торца нижней пристройки, 1-й этаж
 // ---------------------------------------------------------------------------
 function addEntranceMarker() {
-    const pos = CALIBRATION.entrancePos;
-    if (!pos) return;
-    const CLR = 0xFF0068;
+    const sz = ANNEX_SIZES.get(1.5);
+    // Восточный торец пристройки (дальний конец от цилиндра = сторона улицы)
+    const EX = ANNEX_ATTACH_X + sz.depth + 2.2;
+    const CLR = 0xFF0068;  // фирменный маджента-красный Зотова
 
     const g = new THREE.Group();
-    g.name = 'entranceMarker';
-    g.position.set(pos.x, 0, pos.z);
+    g.position.set(EX, 0, 0);
     building.add(g);
 
-    const pinMat = new THREE.MeshStandardMaterial({
-        color: CLR, emissive: new THREE.Color(CLR), emissiveIntensity: 0.55,
+    const mat = new THREE.MeshStandardMaterial({
+        color: CLR, transparent: true, opacity: 0.80,
+        emissive: new THREE.Color(CLR), emissiveIntensity: 0.45,
     });
 
-    // Иголка (стержень булавки)
-    const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.04, 2.5, 10), pinMat);
-    needle.position.y = 1.25;
-    g.add(needle);
+    // Вертикальная плита — портал входа (плоская арка-маркер)
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.22, 5.0, 5.2), mat);
+    plate.position.y = 2.5;
+    g.add(plate);
 
-    // Шарик (головка булавки)
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.52, 20, 20), pinMat);
-    ball.position.y = 3.3;
-    g.add(ball);
+    // Горизонтальная перемычка (форма ворот)
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 5.2), mat);
+    bar.position.y = 5.0;
+    g.add(bar);
 
-    // Надпись «ВХОД / EXIT»
+    // Конус-стрелка, указывающий в –X (внутрь здания по оси пристройки)
+    const coneMat = new THREE.MeshStandardMaterial({
+        color: CLR, emissive: new THREE.Color(CLR), emissiveIntensity: 0.65,
+    });
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.65, 2.4, 8), coneMat);
+    cone.rotation.z = Math.PI / 2;   // вершина → –X (внутрь)
+    cone.position.set(-2.5, 2.5, 0);
+    g.add(cone);
+
+    // Canvas-подпись «ВХОД / EXIT»
     const canvas = document.createElement('canvas');
     canvas.width  = 320;
     canvas.height = 80;
@@ -217,24 +205,25 @@ function addEntranceMarker() {
     ctx.fillRect(0, 0, 320, 80);
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 26px Arial, sans-serif';
-    ctx.textAlign = 'center';
+    ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('ВХОД / EXIT', 160, 40);
-    const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(6.5, 1.6),
-        new THREE.MeshBasicMaterial({
-            map: new THREE.CanvasTexture(canvas),
-            transparent: true, depthWrite: false, side: THREE.DoubleSide,
-        }),
-    );
-    label.position.y = 5.2;
+
+    const labelMat = new THREE.MeshBasicMaterial({
+        map: new THREE.CanvasTexture(canvas),
+        transparent: true, depthWrite: false,
+        side: THREE.DoubleSide,
+    });
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 2.1), labelMat);
+    label.position.y = 7.2;
     g.add(label);
 
-    // Светящееся кольцо у основания
-    const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(2.0, 0.13, 8, 40),
-        new THREE.MeshStandardMaterial({ color: CLR, emissive: new THREE.Color(CLR), emissiveIntensity: 0.9 }),
-    );
+    // Светящееся кольцо у основания (навигационный маяк)
+    const ringGeo = new THREE.TorusGeometry(2.2, 0.14, 8, 40);
+    const ringMat = new THREE.MeshStandardMaterial({
+        color: CLR, emissive: new THREE.Color(CLR), emissiveIntensity: 0.8,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.rotation.x = Math.PI / 2;
     ring.position.y = 0.1;
     g.add(ring);
@@ -244,8 +233,8 @@ function addEntranceMarker() {
 // Зоны основных этажей (интерактивный слой — секторные кольца)
 // ---------------------------------------------------------------------------
 function addZoneMesh(group, z, baseY, floorHeight) {
-    const inner  = Math.max(0.01, z.radiusInner * CALIBRATION.zoneRadiiScale);
-    const outer  = z.radiusOuter * CALIBRATION.zoneRadiiScale;
+    const inner  = Math.max(0.01, z.radiusInner);
+    const outer  = z.radiusOuter;
     const thetaStart  = deg2rad(z.angleStart);
     const thetaLength = deg2rad(z.angleEnd - z.angleStart);
     const segs = Math.max(6, Math.round((z.angleEnd - z.angleStart) / 4));
@@ -260,15 +249,15 @@ function addZoneMesh(group, z, baseY, floorHeight) {
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.rotation.x  = -Math.PI / 2;
-    mesh.position.set(CALIBRATION.zoneXOffset, baseY + 0.15, 0);
+    mesh.position.y  = baseY + 0.15;
     mesh.receiveShadow = true;
     mesh.userData = { zoneId: z.id, type: z.type, name: z.name, floorNumber: z.floorNumber };
     group.add(mesh);
     zoneMeshes.push(mesh);
 
     const ang = deg2rad((z.angleStart + z.angleEnd) / 2);
-    const rc  = (z.radiusInner + z.radiusOuter) / 2 * CALIBRATION.zoneRadiiScale;
-    const center = new THREE.Vector3(rc * Math.cos(ang) + CALIBRATION.zoneXOffset, baseY + 0.6, -rc * Math.sin(ang));
+    const rc  = (inner + outer) / 2;
+    const center = new THREE.Vector3(rc * Math.cos(ang), baseY + 0.6, -rc * Math.sin(ang));
     zoneIndex.set(z.id, { data: z, mesh, center, baseColor, floorNumber: z.floorNumber });
 }
 
@@ -286,11 +275,9 @@ function addAnnexZoneMeshes(group, zones, floorNumber, baseY) {
 
     rooms.sort((a, b) => a.angleStart - b.angleStart);
 
-    const cfg     = CALIBRATION.annexFloors[floorNumber] || { xOffset: 0, scale: 1 };
-    const depth   = sz.depth * cfg.scale;
-    const width   = sz.width * cfg.scale;
+    const { depth, width } = sz;
     const attachX = CYLINDER_R - 1.5;
-    const centerX = attachX + depth / 2 + cfg.xOffset;
+    const centerX = attachX + depth / 2;
 
     const totalSpan = rooms.reduce((sum, z) => sum + (z.angleEnd - z.angleStart), 0);
     let zOffset = -width / 2;
@@ -375,16 +362,6 @@ function addVerticalShafts() {
     }
 }
 
-function clearOverlays() {
-    const toRemove = building.children.filter(c => c.name !== 'buildingModel');
-    toRemove.forEach(c => building.remove(c));
-    floorGroups.clear();
-    floorMeta.clear();
-    zoneMeshes.length = 0;
-    zoneIndex.clear();
-    maxFloor = 1;
-}
-
 function clear() {
     building.clear();
     floorGroups.clear();
@@ -393,68 +370,6 @@ function clear() {
     zoneIndex.clear();
     maxFloor = 1;
     buildingModel = null;
-}
-
-// Прямоугольный overlay для 1-го этажа пристройки (в БД этаж 1 = кольца, но визуально
-// пристройка начинается с уровня 1, поэтому добавляем отдельный прямоугольник).
-function addFloor1AnnexRect() {
-    const cfg = CALIBRATION.annexFloors[1] || { xOffset: 0, yOffset: 0, scale: 1 };
-    const base = ANNEX_SIZES.get(1.5); // используем те же базовые размеры что у 1.5
-    const depth   = base.depth * cfg.scale;
-    const width   = base.width * cfg.scale;
-    const attachX = CYLINDER_R - 1.5;
-    const centerX = attachX + depth / 2 + cfg.xOffset;
-    const baseY   = floorBaseY(1) + (cfg.yOffset || 0);
-
-    const geo = new THREE.PlaneGeometry(depth - 0.3, width - 0.12);
-    const mat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color('#8a8070'),
-        transparent: true, opacity: 0.65,
-        side: THREE.DoubleSide, metalness: 0.1, roughness: 0.7,
-        emissive: new THREE.Color(0x000000),
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(centerX, baseY + 0.2, 0);
-    mesh.userData = { floorNumber: 1, isAnnex1: true };
-    building.add(mesh);
-}
-
-// Пересборка только зон/шахт/входа без перезагрузки GLB-модели.
-// Вызывается из calibrator.js при изменении параметров.
-export function rebuildOverlays(floors, zones) {
-    clearOverlays();
-    const byFloor = new Map();
-    for (const z of zones) {
-        if (!byFloor.has(z.floorNumber)) byFloor.set(z.floorNumber, []);
-        byFloor.get(z.floorNumber).push(z);
-    }
-    for (const floor of floors) {
-        maxFloor = Math.max(maxFloor, floor.number);
-        const height = floor.heightMeters || 4;
-        const radius = floor.radiusMeters || R_OUTER;
-        const baseY  = floorBaseY(floor.number);
-        floorMeta.set(floor.number, { baseY, height, radius });
-        const group = new THREE.Group();
-        group.userData.floorNumber = floor.number;
-        floorGroups.set(floor.number, group);
-        building.add(group);
-        if (isMezzanine(floor.number)) {
-            addAnnexZoneMeshes(group, byFloor.get(floor.number) || [], floor.number, baseY);
-        } else {
-            for (const z of (byFloor.get(floor.number) || [])) {
-                addZoneMesh(group, z, baseY, height);
-            }
-        }
-    }
-    addFloor1AnnexRect();
-    addVerticalShafts();
-    addEntranceMarker();
-    setFloorFocus(null);
-}
-
-export function setEntrancePos(x, z) {
-    CALIBRATION.entrancePos = { x, z };
 }
 
 // ---------------------------------------------------------------------------
