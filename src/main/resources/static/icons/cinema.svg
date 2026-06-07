@@ -1,0 +1,10 @@
+<svg width="266" height="250" viewBox="0 0 266 250" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<path d="M266 244H113.369C-36.2811 244 -23.1476 14.3978 113.369 6.33209C249.885 -1.73363 266 139.083 213.008 205.459" stroke="black" stroke-width="12" stroke-linejoin="round"/>
+<g id="Repeat group 1_inner" data-figma-trr="r4u2.5-0f">
+<circle cx="124.263" cy="62.7424" r="25.7751" fill="black"/>
+</g>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(251.443 2.91746) rotate(90)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(248.525 254.36) rotate(-180)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(-2.91746 251.443) rotate(-90)"/>
+<ellipse cx="124.5" cy="125" rx="11.5" ry="11" fill="black"/>
+</svg>

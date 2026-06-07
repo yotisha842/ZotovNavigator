@@ -20,6 +20,7 @@ const EVENT_LABEL = {
 
 const el = {
     panel: document.getElementById('panel'),
+    panelHandle: document.getElementById('panelHandle'),
     panelContent: document.getElementById('panelContent'),
     panelClose: document.getElementById('panelClose'),
     floorSwitcher: document.getElementById('floorSwitcher'),
@@ -29,7 +30,6 @@ const el = {
     chatHeaderBtn: document.getElementById('chatHeaderBtn'),
     modeSwitcher: document.getElementById('modeSwitcher'),
     tooltip: document.getElementById('tooltip'),
-    transportToggle: document.getElementById('transportToggle'),
 };
 
 // Состояние флипа панели
@@ -51,6 +51,8 @@ const state = {
 
 // zoneId → Event[] — заполняется при инициализации из main.js
 let _eventsCache = new Map();
+
+function isMobile() { return window.innerWidth <= 720; }
 
 function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -113,9 +115,11 @@ export function initUi(floors, zones, eventsMap = new Map()) {
     el.modeSwitcher.querySelectorAll('.mode').forEach((b) => b.classList.remove('is-active'));
     selectFloor(null);
 
-    // По умолчанию открываем «Ближайшие события»
+    // Десктоп: сразу открываем афишу; мобильный: показываем чистую 3D-сцену
     flip.activeCategory = 'all';
-    openAfisha(false, 'all').then(() => { flip.openedViaCategory = true; });
+    if (!isMobile()) {
+        openAfisha(false, 'all').then(() => { flip.openedViaCategory = true; });
+    }
 }
 
 function buildFloorSwitcher(floors) {
@@ -163,19 +167,16 @@ function selectFloor(number) {
     const meta = number != null ? getFloorMeta(number) : null;
     if (meta) {
         const mezz = !Number.isInteger(number);
-        flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), mezz ? 38 : 46, meta.baseY + (mezz ? 18 : 26));
+        if (isMobile()) {
+            flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), 68, meta.baseY + 38);
+        } else {
+            flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), mezz ? 38 : 46, meta.baseY + (mezz ? 18 : 26));
+        }
     } else {
-        flyTo(new THREE.Vector3(0, 12, 0), 60, 42);
+        flyTo(new THREE.Vector3(0, 12, 0), isMobile() ? 74 : 60, isMobile() ? 52 : 42);
     }
 }
 
-function setTransportMode(preferElevator) {
-    state.preferElevator = preferElevator;
-    el.transportToggle.querySelectorAll('.transport-btn').forEach((b) => {
-        const active = b.dataset.transport === (preferElevator ? 'elevator' : 'stairs');
-        b.classList.toggle('is-active', active);
-    });
-}
 
 function wireEvents() {
     el.panelClose.onclick = () => {
@@ -202,9 +203,6 @@ function wireEvents() {
 
     el.eventsMenuToggle.onclick = openEventsMenu;
 
-    el.transportToggle.querySelectorAll('.transport-btn').forEach((btn) => {
-        btn.onclick = () => setTransportMode(btn.dataset.transport === 'elevator');
-    });
 
     el.modeSwitcher.querySelectorAll('.mode').forEach((btn) => {
         btn.onclick = () => {
@@ -212,6 +210,37 @@ function wireEvents() {
             btn.classList.add('is-active');
             setMode(btn.dataset.mode);
         };
+    });
+
+    // ── Мобильный touch: свайп вверх = expand, вниз = collapse/close ──
+    let touchY0 = 0;
+    el.panel.addEventListener('touchstart', (e) => {
+        touchY0 = e.touches[0].clientY;
+    }, { passive: true });
+    el.panel.addEventListener('touchend', (e) => {
+        if (!isMobile()) return;
+        const dy = e.changedTouches[0].clientY - touchY0;
+        if (dy < -40) {
+            // Свайп вверх → раскрыть
+            expandPanel();
+        } else if (dy > 64) {
+            // Свайп вниз
+            if (el.panel.classList.contains('panel--peek')) {
+                el.panelClose.click(); // уже peek → закрыть
+            } else if (el.panelContent.querySelector('.panel__peek-section')) {
+                el.panel.classList.add('panel--peek'); // есть peek-секция → свернуть
+            } else {
+                el.panelClose.click(); // нет peek → закрыть
+            }
+        }
+    }, { passive: true });
+
+    // Тап по peek-секции (не по кнопкам) → раскрыть
+    el.panel.addEventListener('click', (e) => {
+        if (!isMobile()) return;
+        if (!el.panel.classList.contains('panel--peek')) return;
+        if (e.target.closest('[data-act]') || e.target.closest('.panel__close')) return;
+        expandPanel();
     });
 
     let timer = null;
@@ -226,6 +255,13 @@ function wireEvents() {
             el.searchResults.hidden = true;
         }
     });
+}
+
+// ---------------------------------------------------------------------------
+// Peek / Expand (мобильный bottom sheet)
+// ---------------------------------------------------------------------------
+function expandPanel() {
+    el.panel.classList.remove('panel--peek');
 }
 
 // ---------------------------------------------------------------------------
@@ -275,10 +311,11 @@ function renderCategoryList() {
 function openEventsMenu() {
     if (flip.mode === 'categories') return;
     el.eventsMenuToggle.classList.add('is-active');
+    el.panel.classList.remove('panel--peek');
 
     if (flip.mode === 'closed') {
         el.panel.hidden = false;
-        setCameraViewOffset(el.panel.offsetWidth);
+        if (!isMobile()) setCameraViewOffset(el.panel.offsetWidth);
         renderCategoryList();
         flipIn();
         flip.mode = 'categories';
@@ -308,7 +345,8 @@ async function selectCategory(cat) {
 function showPanel(html) {
     el.panelContent.innerHTML = html;
     el.panel.hidden = false;
-    setCameraViewOffset(el.panel.offsetWidth);
+    el.panel.classList.remove('panel--peek'); // не-зональные панели всегда развёрнуты
+    if (!isMobile()) setCameraViewOffset(el.panel.offsetWidth);
     flip.mode = 'events';
     flip.openedViaCategory = false; // переопределяется в selectCategory
 }
@@ -327,17 +365,21 @@ export async function drawRouteOnly(toZoneId, fromZoneIdOverride = null) {
     state.selectedFloor = null;
     highlightZones(new Set([toZoneId]));
     setPulse([toZoneId]);
-    const mid = resp.steps[Math.floor(resp.steps.length / 2)];
-    const c = zoneCenterWorld(mid.zoneId);
-    flyTo(c, 58, c.y + 24);
+    if (isMobile()) {
+        flyTo(new THREE.Vector3(0, 10, 0), 74, 52);
+    } else {
+        const mid = resp.steps[Math.floor(resp.steps.length / 2)];
+        const c = zoneCenterWorld(mid.zoneId);
+        flyTo(c, 58, c.y + 24);
+    }
     return resp;
 }
 
 // Закрытие панели = полный сброс: убираем маршрут и подсветку.
 function hidePanel() {
     el.panel.hidden = true;
-    el.panel.classList.remove('panel--chat');
-    setCameraViewOffset(0);
+    el.panel.classList.remove('panel--chat', 'panel--peek');
+    if (!isMobile()) setCameraViewOffset(0);
     clearRoute();
     highlightZones(null);
     setPulse([]);
@@ -359,6 +401,7 @@ export function openChatPanel(renderFn) {
 
     const doRender = () => {
         el.panel.classList.add('panel--chat');
+        el.panel.classList.remove('panel--peek');
         renderFn(el.panelContent);
         flipIn();
         flip.mode = 'chat';
@@ -367,7 +410,7 @@ export function openChatPanel(renderFn) {
 
     if (flip.mode === 'closed') {
         el.panel.hidden = false;
-        setCameraViewOffset(el.panel.offsetWidth);
+        if (!isMobile()) setCameraViewOffset(el.panel.offsetWidth);
         doRender();
     } else {
         flipOut().then(doRender);
@@ -409,18 +452,34 @@ export function showZone(zoneId) {
     highlightZones(new Set([zoneId]));
     setPulse([zoneId]);
     const c = zoneCenterWorld(zoneId);
-    flyTo(c, 46, c.y + 22);
+    if (isMobile()) {
+        flyTo(new THREE.Vector3(0, 10, 0), 74, 52); // на мобильном — обзорная точка, модель целиком
+    } else {
+        flyTo(c, 46, c.y + 22);
+    }
 
     const isStart = state.startZoneId === zoneId;
     const canReset = isStart && state.startZoneId !== state.defaultStartZoneId;
-
     const zoneEvents = _eventsCache.get(zoneId) || [];
     const now = new Date();
 
-    let mainHtml;
+    // ── Peek-секция: название + этаж + кнопки ──────────────────────────
+    const peekName = z.type === 'CINEMA'
+        ? z.name
+        : (zoneEvents[0]?.title || z.name);
+
+    const peekHtml = `
+        <h2>${escapeHtml(peekName)}</h2>
+        <div class="muted">${fmtFloorLabel(z.floorNumber)}</div>
+        ${isStart ? `<div class="meta-row"><span>Вы здесь</span><b>✓ точка старта</b>${canReset ? '<button class="start-reset-btn" data-act="reset-start" title="Сбросить к входу">×</button>' : ''}</div>` : ''}
+        <button class="btn btn--primary" data-act="route" data-id="${z.id}">Маршрут сюда</button>
+        ${!isStart ? `<button class="btn btn--block" data-act="here" data-id="${z.id}">Я здесь — стартовать отсюда</button>` : ''}
+    `;
+
+    // ── Detail-секция: тег, описание, расписание, события ──────────────
+    let detailHtml;
 
     if (z.type === 'CINEMA') {
-        // Кинозал: показываем расписание сеансов на сегодня (start >= now, тот же день)
         const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
         const todayFilms = zoneEvents.filter((ev) => {
             const s = new Date(ev.startTime);
@@ -449,10 +508,8 @@ export function showZone(zoneId) {
                     </div>`).join('')}
             </div>` : '';
 
-        mainHtml = `
+        detailHtml = `
             <span class="tag">Кинозал</span>
-            <h2>${escapeHtml(z.name)}</h2>
-            <div class="muted">${fmtFloorLabel(z.floorNumber)}</div>
             <div class="cinema-schedule">
                 <div class="cinema-schedule__label">Сегодня</div>
                 ${filmsHtml}
@@ -460,7 +517,6 @@ export function showZone(zoneId) {
             ${otherHtml}`;
 
     } else {
-        // Остальные зоны: показываем основное событие
         const primary = zoneEvents[0];
         const extra = zoneEvents.slice(1);
 
@@ -475,27 +531,34 @@ export function showZone(zoneId) {
                             <div class="event-card__meta">${fmtDateRange(ev.startTime, ev.endTime)}</div>
                         </div>`).join('')}
                 </div>` : '';
-            mainHtml = `
+            detailHtml = `
                 <span class="tag">${escapeHtml(EVENT_LABEL[primary.type] || primary.type)}</span>
-                <h2>${escapeHtml(primary.title)}</h2>
-                <div class="muted">${fmtFloorLabel(z.floorNumber)} · ${fmtDateRange(primary.startTime, primary.endTime)}</div>
+                <div class="muted">${fmtDateRange(primary.startTime, primary.endTime)}</div>
                 <p>${escapeHtml(primary.description || '')}</p>
                 ${extraHtml}`;
         } else {
-            mainHtml = `
+            detailHtml = `
                 <span class="tag">${escapeHtml(ZONE_LABEL[z.type] || z.type)}</span>
-                <h2>${escapeHtml(z.name)}</h2>
-                <div class="muted">${fmtFloorLabel(z.floorNumber)}</div>
                 <p>${escapeHtml(z.description || '')}</p>`;
         }
     }
 
-    showPanel(`
-        ${mainHtml}
-        ${isStart ? `<div class="meta-row"><span>Вы здесь</span><b>✓ точка старта</b>${canReset ? '<button class="start-reset-btn" data-act="reset-start" title="Сбросить к входу">×</button>' : ''}</div>` : ''}
-        <button class="btn btn--primary" data-act="route" data-id="${z.id}">Маршрут сюда</button>
-        ${!isStart ? `<button class="btn btn--block" data-act="here" data-id="${z.id}">Я здесь — стартовать отсюда</button>` : ''}
-    `);
+    // ── Рендер: peek + detail в panelContent ───────────────────────────
+    el.panelContent.innerHTML = `
+        <div class="panel__peek-section">${peekHtml}</div>
+        <div class="panel__detail-section">${detailHtml}</div>
+    `;
+    el.panel.hidden = false;
+    if (isMobile()) {
+        el.panel.classList.add('panel--peek');
+    } else {
+        el.panel.classList.remove('panel--peek');
+        setCameraViewOffset(el.panel.offsetWidth);
+    }
+    flip.mode = 'events';
+    flip.openedViaCategory = false;
+
+    // ── Обработчики кнопок ─────────────────────────────────────────────
     el.panelContent.querySelector('[data-act="route"]').onclick = () => buildRouteTo(zoneId);
     if (canReset) {
         el.panelContent.querySelector('[data-act="reset-start"]').onclick = () => {
@@ -534,10 +597,18 @@ function renderRoute(resp) {
     highlightZones(new Set([destZoneId]));
     setPulse([destZoneId]);
 
-    // Камера на середину маршрута
-    const mid = resp.steps[Math.floor(resp.steps.length / 2)];
-    const c = zoneCenterWorld(mid.zoneId);
-    flyTo(c, 58, c.y + 24);
+    const startName = resp.steps[0].zoneName;
+    const endName   = resp.steps[resp.steps.length - 1].zoneName;
+    const destType  = resp.steps[resp.steps.length - 1].zoneType;
+
+    // Камера: на мобильном — обзорная точка (модель целиком), на десктопе — на середину
+    if (isMobile()) {
+        flyTo(new THREE.Vector3(0, 10, 0), 74, 52);
+    } else {
+        const mid = resp.steps[Math.floor(resp.steps.length / 2)];
+        const c = zoneCenterWorld(mid.zoneId);
+        flyTo(c, 58, c.y + 24);
+    }
 
     const stepsHtml = resp.steps.map((s) => `
         <li class="step">
@@ -545,20 +616,42 @@ function renderRoute(resp) {
             <div class="step__floor">${escapeHtml(ZONE_LABEL[s.zoneType] || '')} · ${fmtFloorLabel(s.floorNumber)}</div>
         </li>`).join('');
 
-    showPanel(`
-        <span class="tag">Маршрут</span>
-        <h2>${escapeHtml(resp.steps[0].zoneName)} → ${escapeHtml(resp.steps[resp.steps.length - 1].zoneName)}</h2>
-        <div class="muted">Следуйте по подсвеченной линии</div>
-        <ol class="steps">${stepsHtml}</ol>
-        <button class="btn btn--block" data-act="clear">Сбросить маршрут</button>
-    `);
+    const clearBtn = '<button class="btn btn--block" data-act="clear">Сбросить маршрут</button>';
+
+    if (isMobile()) {
+        // Мобильный: peek с целью + кнопкой сброса, детали по свайпу вверх
+        el.panelContent.innerHTML = `
+            <div class="panel__peek-section">
+                <h2>${escapeHtml(endName)}</h2>
+                <div class="muted">Следуйте по линии на карте</div>
+                ${clearBtn}
+            </div>
+            <div class="panel__detail-section">
+                <span class="tag">Маршрут</span>
+                <div class="muted">${escapeHtml(startName)} → ${escapeHtml(endName)}</div>
+                <ol class="steps">${stepsHtml}</ol>
+            </div>
+        `;
+        el.panel.hidden = false;
+        el.panel.classList.add('panel--peek');
+        flip.mode = 'events';
+        flip.openedViaCategory = false;
+    } else {
+        showPanel(`
+            <span class="tag">Маршрут</span>
+            <h2>${escapeHtml(startName)} → ${escapeHtml(endName)}</h2>
+            <div class="muted">Следуйте по подсвеченной линии</div>
+            <ol class="steps">${stepsHtml}</ol>
+            ${clearBtn}
+        `);
+    }
+
     el.panelContent.querySelector('[data-act="clear"]').onclick = () => {
         clearRoute();
         highlightZones(null);
         setPulse([]);
         hidePanel();
     };
-    const destType = resp.steps[resp.steps.length - 1].zoneType;
     appendRecommendations(destType);
 }
 
@@ -662,9 +755,7 @@ function setMode(mode) {
     setPulse([]);
     state.plan.clear();
 
-    // Сценарий «С детьми» — по умолчанию лифт (коляски, маленькие дети).
-    // Остальные сценарии — лестница (быстрее для пешеходов, обзор здания).
-    setTransportMode(mode === 'kids');
+    state.preferElevator = (mode === 'kids');
 
     if (mode === 'first') {
         selectFloor(null);
