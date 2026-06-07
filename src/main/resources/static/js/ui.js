@@ -319,13 +319,14 @@ function showPanel(html) {
 export function getStartZoneId() { return state.startZoneId; }
 
 export async function drawRouteOnly(toZoneId, fromZoneIdOverride = null) {
-    const fromZoneId = fromZoneIdOverride ?? state.startZoneId ?? 1;
+    const fromZoneId = fromZoneIdOverride ?? state.startZoneId ?? state.defaultStartZoneId ?? 1;
     const resp = await api.route(fromZoneId, toZoneId, state.preferElevator);
     drawRoute(resp.steps);
     setFloorFocus(null);
     setActiveFloorBtn(null);
     state.selectedFloor = null;
-    highlightZones(new Set(resp.steps.map((s) => s.zoneId)));
+    highlightZones(new Set([toZoneId]));
+    setPulse([toZoneId]);
     const mid = resp.steps[Math.floor(resp.steps.length / 2)];
     const c = zoneCenterWorld(mid.zoneId);
     flyTo(c, 58, c.y + 24);
@@ -515,7 +516,7 @@ export function showZone(zoneId) {
 // Маршрут
 // ---------------------------------------------------------------------------
 async function buildRouteTo(toZoneId) {
-    if (!state.startZoneId) { state.startZoneId = toZoneId; }
+    if (!state.startZoneId) { state.startZoneId = state.defaultStartZoneId || toZoneId; }
     try {
         const resp = await api.route(state.startZoneId, toZoneId, state.preferElevator);
         renderRoute(resp);
@@ -529,7 +530,9 @@ function renderRoute(resp) {
     setFloorFocus(null);
     setActiveFloorBtn(null);
     state.selectedFloor = null;
-    highlightZones(new Set(resp.steps.map((s) => s.zoneId)));
+    const destZoneId = resp.steps[resp.steps.length - 1].zoneId;
+    highlightZones(new Set([destZoneId]));
+    setPulse([destZoneId]);
 
     // Камера на середину маршрута
     const mid = resp.steps[Math.floor(resp.steps.length / 2)];
