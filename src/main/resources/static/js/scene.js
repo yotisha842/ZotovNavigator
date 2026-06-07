@@ -124,6 +124,14 @@ export function flyTo(targetVec, distance = 48, height = 30, posOverride = null)
     };
 }
 
+/** Мягко подвести камеру к точке БЕЗ поворота модели: сохраняем текущее
+ *  направление взгляда (азимут/наклон), лишь чуть приближаемся (factor<1). */
+export function zoomToward(targetVec, factor = 0.9) {
+    const offset = camera.position.clone().sub(controls.target).multiplyScalar(factor);
+    const pos = targetVec.clone().add(offset);
+    flyTo(targetVec, 0, 0, pos);
+}
+
 /** Вернуть камеру в дефолтное положение (обзор всего здания). */
 export function resetCamera() {
     flyTo(new THREE.Vector3(0, 18, 0), 0, 0, new THREE.Vector3(85, 72, 85));

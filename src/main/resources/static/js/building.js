@@ -550,11 +550,10 @@ function addZoneMesh(group, z, baseY, floorHeight, colorIdx = 0) {
 function indexCirculationZone(z, baseY) {
     const ang = deg2rad((z.angleStart + z.angleEnd) / 2);
     const rc  = (z.radiusInner + z.radiusOuter) / 2 * CALIBRATION.zoneRadiiScale;
-    const worldAng = ang + Math.PI / 2;
     const center = new THREE.Vector3(
-        rc * Math.cos(worldAng) + CALIBRATION.zoneXOffset,
+        rc * Math.cos(ang) + CALIBRATION.zoneXOffset,
         baseY + 0.6,
-        -rc * Math.sin(worldAng),
+        -rc * Math.sin(ang),
     );
     zoneIndex.set(z.id, {
         data: z, mesh: null, center,
