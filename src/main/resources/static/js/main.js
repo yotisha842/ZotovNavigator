@@ -60,8 +60,13 @@ function setupFacadeReveal() {
         if (done) return;
         startFacadeReveal();
     }
+    function onPointerDown(e) {
+        if (done) return;
+        startFacadeReveal();
+    }
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('touchstart', onTouch, { passive: true });
+    canvas.addEventListener('pointerdown', onPointerDown);
 
     // Когда анимация завершилась — включаем зум и снимаем перехватчики
     onFrame(() => {
@@ -70,6 +75,7 @@ function setupFacadeReveal() {
             controls.enableZoom = true;
             canvas.removeEventListener('wheel', onWheel);
             canvas.removeEventListener('touchstart', onTouch);
+            canvas.removeEventListener('pointerdown', onPointerDown);
         }
     });
 }
