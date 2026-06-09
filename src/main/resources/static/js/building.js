@@ -26,14 +26,14 @@ const ICON_TYPE_MAP = {
     RESTROOM:   'toilet',
     CINEMA:     'cinema',
     WORKSHOP:   'scissors',
+    LECTURE:    'lecture',
 };
 
 // Переопределения по конкретному этажу (floorNumber → zoneType → iconKey)
 const ICON_FLOOR_OVERRIDE = new Map([
-    [1,   { EXHIBITION: 'collage'     }],  // Коллаж как способ мышления
-    [2,   { EXHIBITION: 'kinoglaz'    }],  // Дзига Вертов — Кино-Глаз
-    [3,   { EXHIBITION: 'dom21'       }],  // Дом 21
-    [4,   { EXHIBITION: 'draftfuture' }],  // Выставка 4-го этажа
+    [1,   { EXHIBITION: 'collage'  }],  // Коллаж как способ мышления
+    [2,   { EXHIBITION: 'kinoglaz' }],  // Дзига Вертов — Кино-Глаз
+    [3,   { EXHIBITION: 'dom21'    }],  // Дом 21
 ]);
 
 function _iconKeyForZone(z) {

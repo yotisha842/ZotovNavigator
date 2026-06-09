@@ -5,7 +5,7 @@ import {
     zoneCenterWorld, getFloorMeta, setPulse,
 } from './building.js';
 import { drawRoute, clearRoute } from './routing.js';
-import { flyTo, resetCamera, setCameraViewOffset, zoomToward } from './scene.js';
+import { flyTo, resetCamera, setCameraViewOffset, gentleZoom } from './scene.js';
 import * as THREE from 'three';
 
 const ZONE_LABEL = {
@@ -462,8 +462,7 @@ export function showZone(zoneId) {
     if (isMobile()) {
         flyTo(new THREE.Vector3(0, 10, 0), 74, 52); // на мобильном — обзорная точка, модель целиком
     } else {
-        // Лёгкое приближение к зоне БЕЗ поворота модели (сохраняем текущий ракурс)
-        zoomToward(c, 0.9);
+        gentleZoom(0.85);
     }
 
     const isStart = state.startZoneId === zoneId;
@@ -608,15 +607,6 @@ function renderRoute(resp) {
     const startName = resp.steps[0].zoneName;
     const endName   = resp.steps[resp.steps.length - 1].zoneName;
     const destType  = resp.steps[resp.steps.length - 1].zoneType;
-
-    // Камера: на мобильном — обзорная точка (модель целиком), на десктопе — на середину
-    if (isMobile()) {
-        flyTo(new THREE.Vector3(0, 10, 0), 74, 52);
-    } else {
-        const mid = resp.steps[Math.floor(resp.steps.length / 2)];
-        const c = zoneCenterWorld(mid.zoneId);
-        flyTo(c, 58, c.y + 24);
-    }
 
     // Убираем промежуточные «Пройдите через» — оставляем старт, переходы между этажами и цель
     const compressed = resp.steps.filter((s) => !s.instruction.startsWith('Пройдите'));

@@ -13,7 +13,6 @@ export const COLORS = {
 
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLORS.bg);
-scene.fog = new THREE.Fog(COLORS.bg, 80, 190);
 
 const container = document.getElementById('sceneContainer');
 
@@ -130,6 +129,13 @@ export function zoomToward(targetVec, factor = 0.9) {
     const offset = camera.position.clone().sub(controls.target).multiplyScalar(factor);
     const pos = targetVec.clone().add(offset);
     flyTo(targetVec, 0, 0, pos);
+}
+
+/** Лёгкий зум без поворота: камера чуть приближается к текущей точке орбиты,
+ *  таргет не меняется — никакого вращения/смещения модели. */
+export function gentleZoom(factor = 0.85) {
+    const offset = camera.position.clone().sub(controls.target).multiplyScalar(factor);
+    flyTo(controls.target.clone(), 0, 0, controls.target.clone().add(offset));
 }
 
 /** Вернуть камеру в дефолтное положение (обзор всего здания). */
