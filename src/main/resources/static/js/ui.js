@@ -5,7 +5,7 @@ import {
     zoneCenterWorld, getFloorMeta, setPulse,
 } from './building.js';
 import { drawRoute, clearRoute } from './routing.js';
-import { flyTo, resetCamera, setCameraViewOffset, gentleZoom } from './scene.js';
+import { flyTo, resetCamera, setCameraViewOffset } from './scene.js';
 import * as THREE from 'three';
 
 const ZONE_LABEL = {
@@ -170,7 +170,7 @@ function selectFloor(number) {
         if (mezz) {
             // Пристройка — зоны смещены по +X (~36 у.е.), нужен смещённый таргет
             const tgt = new THREE.Vector3(36, meta.baseY + 2, 0);
-            flyTo(tgt, isMobile() ? 30 : 26, meta.baseY + (isMobile() ? 28 : 20));
+            flyTo(tgt, isMobile() ? 50 : 42, meta.baseY + (isMobile() ? 32 : 24));
         } else if (isMobile()) {
             flyTo(new THREE.Vector3(0, meta.baseY + 2, 0), 68, meta.baseY + 38);
         } else {
@@ -460,9 +460,9 @@ export function showZone(zoneId) {
     setPulse([zoneId]);
     const c = zoneCenterWorld(zoneId);
     if (isMobile()) {
-        flyTo(new THREE.Vector3(0, 10, 0), 74, 52); // на мобильном — обзорная точка, модель целиком
+        flyTo(new THREE.Vector3(0, 10, 0), 74, 52);
     } else {
-        gentleZoom(0.85);
+        flyTo(c, 46, c.y + 22);
     }
 
     const isStart = state.startZoneId === zoneId;
@@ -589,20 +589,21 @@ async function buildRouteTo(toZoneId) {
     if (!state.startZoneId) { state.startZoneId = state.defaultStartZoneId || toZoneId; }
     try {
         const resp = await api.route(state.startZoneId, toZoneId, state.preferElevator);
-        renderRoute(resp);
+        renderRoute(resp, [toZoneId]);
     } catch (e) {
         showPanel(`<h2>Не удалось построить маршрут</h2><p>${escapeHtml(e.message)}</p>`);
     }
 }
 
-function renderRoute(resp) {
-    drawRoute(resp.steps);
+function renderRoute(resp, waypointZoneIds = null) {
+    drawRoute(resp.steps, waypointZoneIds);
     setFloorFocus(null);
     setActiveFloorBtn(null);
     state.selectedFloor = null;
     const destZoneId = resp.steps[resp.steps.length - 1].zoneId;
-    highlightZones(new Set([destZoneId]));
-    setPulse([destZoneId]);
+    const highlightIds = waypointZoneIds && waypointZoneIds.length > 0 ? waypointZoneIds : [destZoneId];
+    highlightZones(new Set(highlightIds));
+    setPulse(highlightIds);
 
     const startName = resp.steps[0].zoneName;
     const endName   = resp.steps[resp.steps.length - 1].zoneName;
@@ -763,7 +764,7 @@ async function buildDayPlan() {
     if (!targets.length) return;
     try {
         const resp = await api.routeMulti(state.startZoneId, targets, true, state.preferElevator);
-        renderRoute(resp);
+        renderRoute(resp, targets);
     } catch (e) {
         showPanel(`<h2>Не удалось построить план</h2><p>${escapeHtml(e.message)}</p>`);
     }
@@ -802,7 +803,7 @@ async function buildGrandTour() {
     }
     try {
         const resp = await api.routeMulti(state.startZoneId, zoneIds, true, state.preferElevator);
-        renderRoute(resp);
+        renderRoute(resp, zoneIds);
         el.panelContent.insertAdjacentHTML('afterbegin',
             '<div class="muted">Маршрут по всем текущим мероприятиям</div>');
     } catch (e) {
