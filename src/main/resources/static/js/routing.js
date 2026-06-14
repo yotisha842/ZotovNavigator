@@ -23,8 +23,10 @@ export function clearRoute() {
     setRouteFloors(null);
 }
 
-/** Построить маршрут по шагам ответа /api/route. */
-export function drawRoute(steps) {
+/** Построить маршрут по шагам ответа /api/route.
+ *  waypointZoneIds — необязательный массив ID целевых зон (для многоточечных маршрутов):
+ *  промежуточные точки получают свои маркеры. */
+export function drawRoute(steps, waypointZoneIds = null) {
     clearRoute();
     if (!steps || steps.length < 2) return;
 
@@ -85,6 +87,30 @@ export function drawRoute(steps) {
     end.add(ball);
     end.position.copy(pts[pts.length - 1]);
     group.add(end);
+
+    // Маркеры промежуточных целевых зон (не старт и не финиш)
+    if (waypointZoneIds && waypointZoneIds.length > 0) {
+        const wpSet = new Set(waypointZoneIds);
+        const firstId = steps[0].zoneId;
+        const lastId  = steps[steps.length - 1].zoneId;
+        const seen    = new Set();
+        for (const s of steps) {
+            if (s.zoneId === firstId || s.zoneId === lastId) continue;
+            if (!wpSet.has(s.zoneId) || seen.has(s.zoneId)) continue;
+            seen.add(s.zoneId);
+            const p = zoneCenterWorld(s.zoneId);
+            p.y += 0.8;
+            const wp = new THREE.Mesh(
+                new THREE.SphereGeometry(0.65, 16, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.7,
+                    metalness: 0.2, roughness: 0.5,
+                }),
+            );
+            wp.position.copy(p);
+            group.add(wp);
+        }
+    }
 
     // Бегущий маркер
     marker = new THREE.Mesh(
