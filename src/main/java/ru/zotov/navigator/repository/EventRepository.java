@@ -6,6 +6,7 @@ import ru.zotov.navigator.model.EventType;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Доступ к событиям афиши.
@@ -23,4 +24,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findByTitleContainingIgnoreCase(String query);
 
     List<Event> findAllByOrderByStartTimeAsc();
+
+    /** Для upsert событий, приходящих из Kafka (краулер афиши): дедупликация по названию и началу. */
+    Optional<Event> findByTitleAndStartTime(String title, LocalDateTime startTime);
 }
