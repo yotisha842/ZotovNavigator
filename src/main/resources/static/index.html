@@ -4,17 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Зотов.Навигатор</title>
-    <!-- PWA -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0A0A0A">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Зотов">
-    <link rel="apple-touch-icon" href="icons/icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script type="importmap">
     {
@@ -31,8 +25,9 @@
     <!-- ШАПКА -->
     <header class="header">
         <div class="brand">
-            <span class="brand__mark"></span>
-            <span class="brand__name">ЗОТОВ<span class="brand__dot">.</span>НАВИГАТОР</span>
+            <span class="brand__logo">ЗОТОВ</span>
+            <span class="brand__divider"></span>
+            <span class="brand__name">НАВИГАТОР</span>
         </div>
         <div class="search">
             <input id="searchInput" class="search__input" type="text"
@@ -40,8 +35,14 @@
             <div id="searchResults" class="search__results" hidden></div>
         </div>
         <div class="header__actions">
-            <button id="afishaToggle" class="btn btn--ghost">Афиша</button>
-            <button id="helpToggle" class="btn btn--icon" title="Подсказка">?</button>
+            <button class="btn btn--ghost events-menu-btn" id="eventsMenuToggle">
+                <span class="btn-label">Мероприятия</span> <span class="events-menu-arrow">▾</span>
+            </button>
+            <button class="btn btn--ghost" id="chatHeaderBtn" title="ИИ-ассистент">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg><span class="btn-label">ИИ-ассистент</span>
+            </button>
         </div>
     </header>
 
@@ -49,6 +50,8 @@
     <main class="stage">
         <!-- Переключатель этажей -->
         <nav class="floors" id="floorSwitcher" aria-label="Этажи"></nav>
+
+
 
         <!-- 3D-сцена -->
         <div id="sceneContainer" class="scene">
@@ -58,6 +61,7 @@
 
         <!-- Правая панель: детали зоны / маршрут / афиша -->
         <aside id="panel" class="panel" hidden>
+            <div class="panel__handle" id="panelHandle" aria-hidden="true"></div>
             <button id="panelClose" class="panel__close" aria-label="Закрыть">×</button>
             <div id="panelContent" class="panel__content"></div>
         </aside>
@@ -65,23 +69,17 @@
 
     <!-- ФУТЕР: режимы -->
     <footer class="modes" id="modeSwitcher">
-        <span class="modes__label">Режим</span>
-        <button class="mode is-active" data-mode="first">Я впервые</button>
-        <button class="mode" data-mode="event">На мероприятие</button>
-        <button class="mode" data-mode="all">Всё посмотреть</button>
-        <button class="mode" data-mode="kids">С детьми</button>
-        <button class="mode" data-mode="plan">План дня</button>
+        <button class="mode is-active" data-mode="all">Посмотреть все</button>
+        <button class="mode" data-mode="plan">Персонализированный маршрут</button>
     </footer>
 
 </div>
 
 <script type="module" src="js/main.js"></script>
 <script>
-  // Регистрация Service Worker для PWA
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
-      .catch(err => console.warn('SW не зарегистрирован:', err));
-  }
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').catch(console.warn);
+}
 </script>
 </body>
 </html>

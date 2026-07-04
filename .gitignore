@@ -19,3 +19,12 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local configuration and generated files
+.env
+*.log
+*.bak
+app_out.txt
+app_err.txt
+build_out.txt
+_preview/

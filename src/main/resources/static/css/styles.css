@@ -1,23 +1,25 @@
 /* =====================================================================
-   Зотов.Навигатор — светлая тема в стилистике Центра «Зотов».
-   Тёплый светлый фон, чёрный текст, красный акцент, конструктивистская геометрия.
+   Зотов.Навигатор — дизайн в стилистике centrezotov.ru
+   Белый фон, чёрная шапка, маджента #FF0068, Roboto Mono для меток
    ===================================================================== */
 
 :root {
-    --bg: #EFEDE7;        /* тёплый светлый фон */
+    --bg: #FFFFFF;
     --surface: #FFFFFF;
-    --surface-2: #F4F2EC;
-    --ink: #141414;       /* основной текст — почти чёрный */
+    --surface-2: #F5F5F5;
+    --ink: #000000;
     --ink-soft: #595955;
-    --red: #E63329;       /* фирменный акцент */
-    --gray: #8C8C8C;
-    --line: #DBD7CE;
+    --accent: #FF0068;      /* фирменная маджента сайта Зотова */
+    --accent-dark: #D4005A; /* hover состояние */
+    --gray: #A5A5A5;
+    --line: #E8E8E8;
 
     --font: 'Golos Text', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Roboto Mono', monospace;
     --header-h: 64px;
     --footer-h: 60px;
-    --shadow: 0 8px 30px rgba(20, 20, 20, 0.10);
-    --shadow-sm: 0 2px 10px rgba(20, 20, 20, 0.06);
+    --shadow: 0 8px 30px rgba(0, 0, 0, 0.10);
+    --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,48 +46,60 @@ body {
     align-items: center;
     gap: 24px;
     padding: 0 24px;
-    background: var(--surface);
-    border-bottom: 2px solid var(--red);
+    background: #000000;
+    border-bottom: none;
     z-index: 20;
 }
 
-.brand { display: flex; align-items: center; gap: 12px; }
-.brand__mark {
-    width: 22px; height: 22px;
-    background: var(--red);
-    border-radius: 50%;
-    position: relative;
+.brand { display: flex; align-items: center; gap: 14px; }
+
+.brand__logo {
+    height: 36px;
+    display: block;
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 36px;
+    letter-spacing: -0.06em;
+    color: #fff;
+}
+
+.brand__divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.2);
     flex: none;
 }
-.brand__mark::after {
-    content: '';
-    position: absolute; inset: 6px;
-    background: var(--surface);
-    border-radius: 50%;
-}
-.brand__name {
-    font-weight: 900;
-    letter-spacing: 0.06em;
-    font-size: 18px;
-    color: var(--ink);
-}
-.brand__dot { color: var(--red); }
 
+.brand__name {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+    text-transform: uppercase;
+}
+
+/* Поиск в тёмной шапке */
 .search { position: relative; flex: 1; max-width: 520px; margin: 0 auto; }
 .search__input {
     width: 100%;
     height: 40px;
     padding: 0 16px;
-    background: var(--surface-2);
-    border: 1px solid var(--line);
-    color: var(--ink);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
     font-family: var(--font);
     font-size: 15px;
     outline: none;
     transition: border-color .15s, background .15s;
 }
-.search__input::placeholder { color: var(--gray); }
-.search__input:focus { border-color: var(--red); background: var(--surface); }
+.search__input::placeholder { color: rgba(255, 255, 255, 0.35); }
+.search__input:focus {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.10);
+}
+
+/* Выпадающий список — светлый, ниже шапки */
 .search__results {
     position: absolute;
     top: 46px; left: 0; right: 0;
@@ -98,6 +112,7 @@ body {
 }
 .search__group-title {
     font-size: 11px;
+    font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--gray);
@@ -108,13 +123,30 @@ body {
     cursor: pointer;
     border-top: 1px solid var(--line);
     display: flex; justify-content: space-between; gap: 10px;
+    color: var(--ink);
 }
 .search__item:hover { background: var(--surface-2); }
 .search__item small { color: var(--gray); white-space: nowrap; }
 
+/* Кнопки в шапке — на тёмном фоне */
 .header__actions { display: flex; gap: 10px; align-items: center; }
 
-/* ---------- КНОПКИ ---------- */
+.header .btn {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+}
+.header .btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.header .btn.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+/* ---------- КНОПКИ (глобальные) ---------- */
 .btn {
     font-family: var(--font);
     font-weight: 600;
@@ -126,63 +158,100 @@ body {
     cursor: pointer;
     transition: background .15s, border-color .15s, color .15s;
 }
-.btn:hover { border-color: var(--red); color: var(--red); }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
 .btn--ghost { background: transparent; }
 .btn--icon { width: 40px; padding: 0; font-weight: 700; }
 .btn--primary {
-    background: var(--red);
-    border-color: var(--red);
+    background: var(--accent);
+    border-color: var(--accent);
     color: #fff;
     width: 100%;
     padding: 13px;
     font-weight: 700;
+    font-family: var(--font-mono);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
 }
-.btn--primary:hover { background: #cf2c22; color: #fff; }
+.btn--primary:hover { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
 .btn--block { width: 100%; margin-top: 8px; }
-.btn.is-active { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* ---------- ОСНОВНАЯ ОБЛАСТЬ ---------- */
 .stage {
     position: relative;
-    display: grid;
-    grid-template-columns: 64px 1fr;
     overflow: hidden;
 }
 
-/* Переключатель этажей */
+/* Плавающий переключатель этажей */
 .floors {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
+    align-items: center;
     background: var(--surface);
-    border-right: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--line);
+    padding: 6px 4px;
     z-index: 10;
+    gap: 1px;
 }
-.floor-btn {
-    flex: 1;
+
+/* Иконка «все этажи» */
+.floors__icon-btn {
+    width: 38px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray);
+    background: transparent;
     border: none;
-    border-bottom: 1px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: color .15s, background .15s;
+    margin-bottom: 2px;
+}
+.floors__icon-btn:hover { color: var(--ink); background: var(--surface-2); }
+.floors__icon-btn.is-active { color: var(--accent); }
+
+/* Разделитель */
+.floors__sep {
+    width: 22px;
+    height: 1px;
+    background: var(--line);
+    margin: 3px 0;
+}
+
+/* Кнопки этажей */
+.floor-btn {
+    width: 38px;
+    height: 34px;
+    border: none;
     background: transparent;
     color: var(--gray);
-    font-family: var(--font);
-    font-weight: 700;
-    font-size: 18px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 14px;
     cursor: pointer;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: background .15s, color .15s;
-    position: relative;
+    line-height: 1;
 }
 .floor-btn:hover { color: var(--ink); background: var(--surface-2); }
-.floor-btn.is-active { color: var(--ink); background: var(--surface-2); }
-.floor-btn.is-active::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0;
-    width: 4px; background: var(--red);
-}
-.floor-btn--all { flex: 0 0 48px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--red); }
+.floor-btn.is-active { color: var(--ink); background: var(--surface-2); font-weight: 700; }
+.floor-btn--mezzanine { font-size: 10px; height: 26px; }
+.floor-btn--mezzanine.is-active { color: var(--ink); }
 
-/* Сцена */
-.scene { position: relative; overflow: hidden; background: var(--bg); }
+
+/* Сцена — на всю площадь */
+.scene { position: absolute; inset: 0; overflow: hidden; background: #F5F5F5; }
 .scene canvas { display: block; }
 
 .tooltip {
@@ -191,8 +260,9 @@ body {
     background: var(--ink);
     color: #fff;
     padding: 6px 10px;
-    font-size: 13px;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
     transform: translate(-50%, -140%);
     white-space: nowrap;
     z-index: 30;
@@ -203,9 +273,10 @@ body {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     color: var(--gray);
+    font-family: var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 /* ---------- ПРАВАЯ ПАНЕЛЬ ---------- */
@@ -229,14 +300,15 @@ body {
     color: var(--ink); font-size: 22px; line-height: 1;
     cursor: pointer; z-index: 2;
 }
-.panel__close:hover { border-color: var(--red); color: var(--red); }
+.panel__close:hover { border-color: var(--accent); color: var(--accent); }
 .panel__content { padding: 28px 24px; }
 
 .tag {
     display: inline-block;
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: var(--font-mono);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
     padding: 4px 10px; margin-bottom: 14px;
-    background: var(--red); color: #fff; font-weight: 700;
+    background: var(--accent); color: #fff; font-weight: 600;
 }
 .tag--muted { background: var(--gray); }
 .panel h2 { font-size: 24px; font-weight: 800; line-height: 1.15; margin-bottom: 6px; color: var(--ink); }
@@ -244,7 +316,28 @@ body {
 .panel p { color: var(--ink-soft); line-height: 1.55; margin-bottom: 18px; font-size: 14px; }
 
 .meta-row { display: flex; gap: 8px; margin-bottom: 8px; font-size: 13px; }
-.meta-row span:first-child { color: var(--gray); min-width: 90px; }
+.meta-row span:first-child {
+    font-family: var(--font-mono);
+    color: var(--gray);
+    min-width: 90px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding-top: 1px;
+}
+
+.meta-row .start-reset-btn {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: var(--gray);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color .15s;
+}
+.meta-row .start-reset-btn:hover { color: var(--accent); }
 
 /* Шаги маршрута */
 .steps { list-style: none; counter-reset: step; margin-top: 6px; }
@@ -259,19 +352,25 @@ body {
     content: counter(step);
     position: absolute; left: -14px; top: 10px;
     width: 26px; height: 26px;
-    background: var(--surface); border: 2px solid var(--red);
+    background: var(--surface); border: 2px solid var(--accent);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 700; color: var(--ink);
 }
 .step:last-child { border-left-color: transparent; }
 .step__text { font-size: 14px; line-height: 1.4; color: var(--ink); }
-.step__floor { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+.step__floor {
+    font-family: var(--font-mono);
+    font-size: 10px; color: var(--gray); text-transform: uppercase;
+    letter-spacing: 0.08em; margin-top: 2px;
+}
 
 /* Афиша */
 .section-title {
-    font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em;
-    color: var(--gray); margin: 4px 0 14px; font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--gray); margin: 4px 0 14px; font-weight: 500;
 }
 .event-card {
     border: 1px solid var(--line);
@@ -281,12 +380,69 @@ body {
     cursor: pointer;
     transition: border-color .15s, box-shadow .15s, transform .1s;
 }
-.event-card:hover { border-color: var(--red); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
-.event-card__type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--red); font-weight: 700; }
+.event-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.event-card__type {
+    font-family: var(--font-mono);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--accent); font-weight: 600;
+}
 .event-card__title { font-size: 16px; font-weight: 700; margin: 4px 0 6px; line-height: 1.2; color: var(--ink); }
-.event-card__meta { font-size: 12px; color: var(--gray); }
+.event-card__meta { font-family: var(--font-mono); font-size: 11px; color: var(--gray); }
 .event-card__check { float: right; }
-.event-card input[type=checkbox] { accent-color: var(--red); width: 18px; height: 18px; }
+.event-card input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; }
+
+.events-divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 0 10px; color: var(--gray);
+}
+.events-divider::before, .events-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--line);
+}
+.events-divider span {
+    font-family: var(--font-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;
+}
+
+/* ---------- Расписание кинозала ---------- */
+.cinema-schedule {
+    margin: 4px 0 16px;
+    border-left: 3px solid var(--accent);
+    padding-left: 12px;
+}
+.cinema-schedule__label {
+    font-family: var(--font-mono);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--accent); font-weight: 600; margin-bottom: 10px;
+}
+.screening-item {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line);
+}
+.screening-item:last-child { border-bottom: none; }
+.screening-item__time {
+    font-family: var(--font-mono); font-size: 14px; font-weight: 700;
+    color: var(--ink); white-space: nowrap; min-width: 42px;
+}
+.screening-item__title { font-size: 14px; color: var(--ink); line-height: 1.3; }
+.screening-empty { font-size: 13px; color: var(--gray); padding: 4px 0; }
+
+/* ---------- Блок событий внутри панели зоны ---------- */
+.zone-events {
+    margin: 4px 0 16px;
+    border-left: 3px solid var(--accent);
+    padding-left: 12px;
+}
+.zone-events__label {
+    font-family: var(--font-mono);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--accent); font-weight: 600; margin-bottom: 8px;
+}
+.zone-event-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+}
+.zone-event-item:last-child { border-bottom: none; }
 
 /* ---------- ФУТЕР: режимы ---------- */
 .modes {
@@ -297,7 +453,8 @@ body {
     overflow-x: auto;
 }
 .modes__label {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    font-family: var(--font-mono);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em;
     color: var(--gray); margin-right: 8px; white-space: nowrap;
 }
 .mode {
@@ -309,17 +466,400 @@ body {
     transition: color .15s, border-color .15s, background .15s;
 }
 .mode:hover { color: var(--ink); border-color: var(--gray); }
-.mode.is-active { color: #fff; background: var(--red); border-color: var(--red); }
+.mode.is-active { color: #fff; background: var(--accent); border-color: var(--accent); }
+
+/* ---------- МАГАЗИН — РЕКОМЕНДАЦИИ ---------- */
+.shop-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+}
+.shop-section__title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--gray);
+    margin-bottom: 10px;
+}
+.shop-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--ink);
+    transition: border-color .15s, box-shadow .15s;
+}
+.shop-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.shop-card__name {
+    font-size: 13px;
+    line-height: 1.35;
+    flex: 1;
+}
+.shop-card__price {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+}
+.shop-section__more {
+    display: block;
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+}
+.shop-section__more:hover { text-decoration: underline; }
+
+/* ---------- КНОПКА МЕРОПРИЯТИЙ ---------- */
+.events-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.events-menu-btn.is-active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.events-menu-arrow {
+    font-size: 10px;
+    display: inline-block;
+    transition: transform .18s;
+    line-height: 1;
+}
+.events-menu-btn.is-active .events-menu-arrow { transform: rotate(180deg); }
+
+/* ---------- ФЛИП ПАНЕЛИ ---------- */
+@keyframes panelFlipOut {
+    0%   { transform: scaleX(1); opacity: 1; }
+    100% { transform: scaleX(0); opacity: 0; }
+}
+@keyframes panelFlipIn {
+    0%   { transform: scaleX(0); opacity: 0; }
+    100% { transform: scaleX(1); opacity: 1; }
+}
+.panel__content.flip-out {
+    transform-origin: center;
+    animation: panelFlipOut .16s ease-in forwards;
+}
+.panel__content.flip-in {
+    transform-origin: center;
+    animation: panelFlipIn .18s ease-out forwards;
+}
+
+/* ---------- СПИСОК КАТЕГОРИЙ В ПАНЕЛИ ---------- */
+.category-list__title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gray);
+    margin-bottom: 4px;
+}
+.category-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 18px 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ink);
+    cursor: pointer;
+    text-align: left;
+    transition: color .12s, padding-left .15s;
+    line-height: 1.1;
+}
+.category-item::after {
+    content: '→';
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--gray);
+    flex-shrink: 0;
+    transition: color .12s, transform .12s;
+}
+.category-item:hover { color: var(--accent); padding-left: 8px; }
+.category-item:hover::after { color: var(--accent); transform: translateX(4px); }
+.category-item.is-active { color: var(--accent); }
+.category-item.is-active::after { color: var(--accent); }
+
+/* ---------- Ручка панели (только мобильный) ---------- */
+.panel__handle { display: none; }
 
 /* ---------- АДАПТИВ ---------- */
 @media (max-width: 720px) {
-    :root { --header-h: 56px; }
-    .brand__name { font-size: 14px; }
+    :root {
+        --header-h: 56px;
+        --footer-h: 52px;
+    }
+
+    /* Шапка */
+    .brand__name { font-size: 11px; }
+    .brand__logo { height: 28px; font-size: 24px; line-height: 28px; }
     .search { order: 3; flex-basis: 100%; max-width: none; }
-    .header { flex-wrap: wrap; height: auto; padding: 8px 14px; }
+    .header { flex-wrap: wrap; height: auto; padding: 8px 14px; gap: 10px; }
     #app { grid-template-rows: auto 1fr var(--footer-h); }
-    .panel { width: 100%; }
-    .stage { grid-template-columns: 48px 1fr; }
+
+    /* Переключатель этажей */
+    .floors { left: 8px; }
+
+    /* Кнопки режимов в футере */
+    .modes { gap: 6px; padding: 0 12px; }
+    .mode { font-size: 12px; padding: 6px 10px; }
+    .modes__label { display: none; }
+
+    /* Кнопки в шапке — компактнее, только иконки */
+    .header__actions { gap: 6px; }
+    .header .btn { font-size: 12px; padding: 7px 10px; }
+    .header .btn-label { display: none; }
+    .events-menu-arrow { font-size: 16px; }
+
+    /* ─── BOTTOM SHEET ─────────────────────────────────────── */
+    @keyframes slideIn {
+        from { transform: translateY(60%); opacity: 0; }
+        to   { transform: translateY(0);   opacity: 1; }
+    }
+
+    .panel {
+        position: fixed;
+        top: auto; right: 0; bottom: 0; left: 0;
+        width: 100%; max-width: 100%;
+        height: auto;
+        max-height: 75vh;
+        min-height: 42vh;
+        border-left: none;
+        border-top: 1px solid var(--line);
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -6px 32px rgba(0,0,0,0.13);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        /* Плавный переход между peek и expanded */
+        transition: max-height 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+                    min-height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    /* ── Peek-режим: только компактная шапка ── */
+    .panel--peek {
+        max-height: 214px;
+        min-height: 0;
+    }
+    .panel--peek .panel__handle { background: var(--gray); cursor: grab; }
+    .panel--peek .panel__detail-section { display: none; }
+    /* подсказка «тяни» вместо курсора pointer на всём */
+    .panel--peek .panel__peek-section { cursor: pointer; }
+
+    /* Ручка */
+    .panel__handle {
+        display: block;
+        width: 36px; height: 4px;
+        background: var(--line);
+        border-radius: 2px;
+        margin: 11px auto 4px;
+        flex-shrink: 0;
+        transition: background 0.15s;
+    }
+
+    /* Кнопка закрытия */
+    .panel__close { top: 6px; right: 12px; }
+
+    /* Прокручиваемое содержимое */
+    .panel__content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 18px 24px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Peek-секция: название + кнопки (всегда видима) */
+    .panel__peek-section { padding-bottom: 4px; }
+    .panel__peek-section h2 { font-size: 19px; margin-bottom: 3px; }
+    .panel__peek-section .muted { margin-bottom: 12px; }
+    .panel__peek-section .btn--primary { margin-top: 0; }
+
+    /* Detail-секция: подробности (скрыта в peek) */
+    .panel__detail-section {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+    }
+
+    /* Чат в bottom sheet */
+    .panel--chat {
+        display: flex; flex-direction: column; overflow: hidden;
+        max-height: 75vh; min-height: 42vh;
+    }
+    .panel--chat .panel__content { padding: 0; overflow: hidden; }
 }
 
 [hidden] { display: none !important; }
+
+/* =====================================================================
+   ЧАТ — ИИ-ассистент GigaChat (рендерится внутри правой панели)
+   ===================================================================== */
+
+/* Правая панель в режиме чата */
+.panel--chat {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.panel--chat .panel__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Заголовок чата внутри панели */
+.chat-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 14px 50px 14px 16px; /* right pad для кнопки × */
+    background: #000;
+    color: rgba(255,255,255,0.85);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.chat-head em { color: var(--accent); font-style: normal; }
+
+/* FAQ-чипы */
+.chat-faq {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+}
+.chat-chip {
+    padding: 5px 11px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+    white-space: nowrap;
+}
+.chat-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(255,0,104,0.05);
+}
+
+/* Область сообщений */
+.chat-msgs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    scroll-behavior: smooth;
+}
+
+/* Пузырь сообщения */
+.chat-msg {
+    max-width: 86%;
+    padding: 9px 13px;
+    font-size: 14px;
+    line-height: 1.5;
+    border-radius: 2px;
+    word-break: break-word;
+}
+.chat-msg--user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: #fff;
+}
+.chat-msg--assistant {
+    align-self: flex-start;
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+}
+.chat-msg--typing {
+    color: var(--gray);
+    font-style: italic;
+}
+.chat-msg--route-hint {
+    align-self: stretch;
+    background: #f5f0ff;
+    border: 1px solid #d4b8ff;
+    color: #5a2d9e;
+    font-size: 13px;
+}
+.chat-msg--route-hint.chat-msg--route-ok {
+    background: #f0faf0;
+    border-color: #7dc87d;
+    color: #1a5c1a;
+}
+.chat-msg--route-hint.chat-msg--route-err {
+    background: #fff5f5;
+    border-color: #ffb3b3;
+    color: #7a1a1a;
+}
+
+/* Строка ввода */
+.chat-input-row {
+    display: flex;
+    align-items: center;
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+}
+.chat-input {
+    flex: 1;
+    height: 48px;
+    padding: 0 14px;
+    border: none;
+    outline: none;
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+}
+.chat-input::placeholder { color: var(--gray); }
+.chat-input:disabled { opacity: 0.5; }
+.chat-send {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    transition: background .12s;
+    flex-shrink: 0;
+}
+.chat-send:hover { background: var(--accent-dark); }

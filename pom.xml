@@ -37,6 +37,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.h2database</groupId>
@@ -67,13 +71,6 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- Парсер HTML для синхронизации событий с centrezotov.ru -->
-        <dependency>
-            <groupId>org.jsoup</groupId>
-            <artifactId>jsoup</artifactId>
-            <version>1.17.2</version>
-        </dependency>
     </dependencies>
 
     <build>
@@ -82,6 +79,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
+                    <encoding>UTF-8</encoding>
                     <!-- JDK 23+ не запускает процессоры аннотаций с classpath неявно —
                          поэтому Lombok подключаем явным processor-path -->
                     <annotationProcessorPaths>
@@ -112,7 +110,7 @@
                         </exclude>
                     </excludes>
                     <!-- ByteBuddy/Hibernate работают на свежей JVM (Java 25) только с экспериментальным флагом -->
-                    <jvmArguments>-Dnet.bytebuddy.experimental=true</jvmArguments>
+                    <jvmArguments>-Dnet.bytebuddy.experimental=true -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8</jvmArguments>
                 </configuration>
             </plugin>
         </plugins>

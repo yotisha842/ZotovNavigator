@@ -39,4 +39,5 @@ export const api = {
         postJson(`${BASE}/route`, { fromZoneId, toZoneId, preferElevator }),
     routeMulti: (fromZoneId, targetZoneIds, optimize = true, preferElevator = false) =>
         postJson(`${BASE}/route/multi`, { fromZoneId, targetZoneIds, optimize, preferElevator }),
+    recommendations: (zoneType) => getJson(`${BASE}/products/recommendations?zoneType=${zoneType}`),
 };

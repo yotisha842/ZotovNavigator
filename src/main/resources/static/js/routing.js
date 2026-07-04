@@ -1,7 +1,7 @@
 // Отрисовка маршрута в 3D: труба-линия вдоль зон + бегущий маркер + точки старта/финиша.
 import * as THREE from 'three';
 import { scene, COLORS, onFrame } from './scene.js';
-import { zoneCenterWorld } from './building.js';
+import { zoneCenterWorld, setRouteFloors } from './building.js';
 
 const group = new THREE.Group();
 group.name = 'route';
@@ -20,24 +20,45 @@ export function clearRoute() {
     marker = null;
     progress = 0;
     revealDone = false;
+    setRouteFloors(null);
 }
 
-/** Построить маршрут по шагам ответа /api/route. */
-export function drawRoute(steps) {
+/** Построить маршрут по шагам ответа /api/route.
+ *  waypointZoneIds — необязательный массив ID целевых зон (для многоточечных маршрутов):
+ *  промежуточные точки получают свои маркеры. */
+export function drawRoute(steps, waypointZoneIds = null) {
     clearRoute();
     if (!steps || steps.length < 2) return;
 
-    const pts = steps.map((s) => {
+    // Выделить задействованные этажи: остальные станут тусклее
+    const routeFloors = new Set(steps.map((s) => s.floorNumber).filter((f) => f != null));
+    setRouteFloors(routeFloors);
+
+    // Строим массив точек; при смене этажа добавляем два направляющих
+    // waypoint-а с теми же X,Z что у точки назначения — это заставляет
+    // CatmullRom идти строго вертикально через шахту лифта/лестниц.
+    const pts = [];
+    for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
         const p = zoneCenterWorld(s.zoneId);
         p.y += 0.8;
-        return p;
-    });
+
+        if (i > 0 && steps[i].floorNumber !== steps[i - 1].floorNumber) {
+            const prev = pts[pts.length - 1];
+            // Точка «начало подъёма»: там же по XZ, чуть выше предыдущей
+            pts.push(new THREE.Vector3(p.x, prev.y + 1.2, p.z));
+            // Точка «перед посадкой»: там же по XZ, чуть ниже текущей
+            pts.push(new THREE.Vector3(p.x, p.y - 1.2, p.z));
+        }
+
+        pts.push(p);
+    }
 
     curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.4);
 
     const tubeGeo = new THREE.TubeGeometry(curve, 240, 0.35, 10, false);
     const tubeMat = new THREE.MeshStandardMaterial({
-        color: COLORS.red, emissive: COLORS.red, emissiveIntensity: 0.7,
+        color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.7,
         metalness: 0.3, roughness: 0.4,
     });
     tube = new THREE.Mesh(tubeGeo, tubeMat);
@@ -47,7 +68,7 @@ export function drawRoute(steps) {
     // Точка старта
     const start = new THREE.Mesh(
         new THREE.SphereGeometry(0.7, 20, 20),
-        new THREE.MeshStandardMaterial({ color: 0x2E8B57, emissive: 0x2E8B57, emissiveIntensity: 0.35 }));
+        new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.55 }));
     start.position.copy(pts[0]);
     group.add(start);
 
@@ -55,7 +76,7 @@ export function drawRoute(steps) {
     const end = new THREE.Group();
     const pin = new THREE.Mesh(
         new THREE.ConeGeometry(0.9, 2.4, 18),
-        new THREE.MeshStandardMaterial({ color: COLORS.red, emissive: COLORS.red, emissiveIntensity: 0.6 }));
+        new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.6 }));
     pin.rotation.x = Math.PI;
     pin.position.y = 1.6;
     end.add(pin);
@@ -67,10 +88,34 @@ export function drawRoute(steps) {
     end.position.copy(pts[pts.length - 1]);
     group.add(end);
 
+    // Маркеры промежуточных целевых зон (не старт и не финиш)
+    if (waypointZoneIds && waypointZoneIds.length > 0) {
+        const wpSet = new Set(waypointZoneIds);
+        const firstId = steps[0].zoneId;
+        const lastId  = steps[steps.length - 1].zoneId;
+        const seen    = new Set();
+        for (const s of steps) {
+            if (s.zoneId === firstId || s.zoneId === lastId) continue;
+            if (!wpSet.has(s.zoneId) || seen.has(s.zoneId)) continue;
+            seen.add(s.zoneId);
+            const p = zoneCenterWorld(s.zoneId);
+            p.y += 0.8;
+            const wp = new THREE.Mesh(
+                new THREE.SphereGeometry(0.65, 16, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.7,
+                    metalness: 0.2, roughness: 0.5,
+                }),
+            );
+            wp.position.copy(p);
+            group.add(wp);
+        }
+    }
+
     // Бегущий маркер
     marker = new THREE.Mesh(
         new THREE.SphereGeometry(0.55, 16, 16),
-        new THREE.MeshStandardMaterial({ color: COLORS.red, emissive: COLORS.red, emissiveIntensity: 0.9 }));
+        new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.9 }));
     marker.position.copy(pts[0]);
     group.add(marker);
 

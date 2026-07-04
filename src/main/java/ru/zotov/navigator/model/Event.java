@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.SequenceGenerator;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,7 +19,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 /**
  * Мероприятие афиши, привязанное к зоне, где оно проходит.
@@ -33,7 +33,8 @@ import java.util.Objects;
 public class Event {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "event_ids")
+    @SequenceGenerator(name = "event_ids", sequenceName = "event_ids", initialValue = 1000, allocationSize = 1)
     private Long id;
 
     @Column(nullable = false)

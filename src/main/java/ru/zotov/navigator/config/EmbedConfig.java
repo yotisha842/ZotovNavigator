@@ -34,9 +34,6 @@ public class EmbedConfig {
                 // Разрешаем iframe — убираем DENY, ставим CSP frame-ancestors
                 response.setHeader("Content-Security-Policy",
                         "frame-ancestors " + allowedOrigins);
-                // X-Frame-Options не совместим с wildcard в некоторых браузерах,
-                // используем только CSP (поддерживается всеми современными браузерами)
-                response.setHeader("X-Frame-Options", "ALLOWALL");
                 chain.doFilter(request, response);
             }
         };

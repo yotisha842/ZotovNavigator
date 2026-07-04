@@ -20,7 +20,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.Set;
 
 /**
  * Построение маршрутов по графу зон.
@@ -162,27 +161,27 @@ public class RouteService {
             }
         }
 
-        // Рёбра между этажами через зоны вертикальной связи
-        double stairsFactor = preferElevator ? 3.0 : 1.0;
-        double elevatorFactor = preferElevator ? 1.0 : 1.5;
+        // Рёбра между этажами — через лестницу или лифт (по предпочтению)
         for (int i = 0; i < all.size(); i++) {
             for (int j = i + 1; j < all.size(); j++) {
                 Zone a = all.get(i);
                 Zone b = all.get(j);
-                if (a.getType() != b.getType()) {
-                    continue;
-                }
-                boolean vertical = a.getType() == ZoneType.STAIRS || a.getType() == ZoneType.ELEVATOR;
-                if (!vertical) {
-                    continue;
-                }
-                int floorDiff = Math.abs(a.getFloor().getNumber() - b.getFloor().getNumber());
-                if (floorDiff != 1) {
-                    continue;
-                }
-                double vertical3d = floorHeight(a);
-                double w = (planarDistance(a, b) + vertical3d)
-                        * (a.getType() == ZoneType.STAIRS ? stairsFactor : elevatorFactor);
+                // Соединяем только зоны одного типа вертикальной связи
+                if (a.getType() != b.getType()) continue;
+                boolean isElevator = a.getType() == ZoneType.ELEVATOR;
+                boolean isStairs   = a.getType() == ZoneType.STAIRS;
+                if (!isElevator && !isStairs) continue;
+                // Фильтруем по предпочтению: используем только нужный тип
+                if (preferElevator && isStairs) continue;
+                if (!preferElevator && isElevator) continue;
+                double floorDiff = Math.abs(a.getFloor().getNumber() - b.getFloor().getNumber());
+                // Допускаем смежность 0.5 (этаж ↔ антресоль) и 1.0 (этаж ↔ этаж)
+                if (floorDiff < 1e-9 || floorDiff > 1.0 + 1e-9) continue;
+                // Одна и та же шахта: зоны на разных этажах, но в той же точке плана.
+                // Порог 5 м гарантированно разделяет две башни (~42 м друг от друга).
+                if (planarDistance(a, b) > 5.0) continue;
+                double vertical3d = verticalDistance(a, b);
+                double w = planarDistance(a, b) + vertical3d;
                 addEdge(graph, a.getId(), b.getId(), w);
             }
         }
@@ -278,9 +277,8 @@ public class RouteService {
         return Math.hypot(pa[0] - pb[0], pa[1] - pb[1]);
     }
 
-    private double floorHeight(Zone z) {
-        double h = z.getFloor().getHeightMeters();
-        return h > 0 ? h : 4.0;
+    private double verticalDistance(Zone a, Zone b) {
+        return Math.abs(a.getFloor().getNumber() - b.getFloor().getNumber()) * 4.0;
     }
 
     private double pathLength(List<Zone> path) {
@@ -289,7 +287,7 @@ public class RouteService {
             Zone prev = path.get(i - 1);
             Zone cur = path.get(i);
             double horizontal = planarDistance(prev, cur);
-            double vertical = prev.getFloor().getNumber() != cur.getFloor().getNumber() ? floorHeight(cur) : 0;
+            double vertical = verticalDistance(prev, cur);
             total += horizontal + vertical;
         }
         return total;
@@ -328,11 +326,15 @@ public class RouteService {
             return "Старт: " + current.getName();
         }
         if (prev != null && prev.getFloor().getNumber() != current.getFloor().getNumber()) {
-            int to = current.getFloor().getNumber();
+            double toNum = current.getFloor().getNumber();
+            // Для дробных номеров (антресоли) используем имя уровня, для целых — "этаж N"
+            String levelLabel = (toNum == Math.floor(toNum))
+                    ? "этаж " + (int) toNum
+                    : "уровень «" + current.getFloor().getName() + "»";
             String via = prev.getType() == ZoneType.ELEVATOR ? "на лифте" : "по лестнице";
-            String verb = current.getFloor().getNumber() > prev.getFloor().getNumber() ? "Поднимитесь" : "Спуститесь";
+            String verb = toNum > prev.getFloor().getNumber() ? "Поднимитесь" : "Спуститесь";
             String tail = last ? " — здесь цель: " + current.getName() : "";
-            return verb + " на этаж " + to + " " + via + tail;
+            return verb + " на " + levelLabel + " " + via + tail;
         }
         if (last) {
             return "Цель: " + current.getName();

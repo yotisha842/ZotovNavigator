@@ -1,83 +1,49 @@
-const CACHE_NAME = 'zotov-navigator-v1';
-
-// Статические ресурсы — кэшируются при установке
+const CACHE_PREFIX = 'zotov-navigator-';
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/css/styles.css',
-  '/js/main.js',
-  '/js/scene.js',
-  '/js/building.js',
-  '/js/routing.js',
-  '/js/api.js',
-  '/js/ui.js',
-  '/manifest.json',
-  '/icons/icon.svg',
+    '/', '/index.html', '/css/styles.css', '/manifest.json', '/icons/icon.svg',
+    '/js/main.js', '/js/scene.js', '/js/building.js', '/js/routing.js', '/js/api.js',
+    '/js/ui.js', '/js/chat.js',
 ];
 
-// Установка: кэшируем статику
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
-  );
-  self.skipWaiting();
+    event.waitUntil(caches.open(CACHE_NAME)
+        .then(cache => cache.addAll(STATIC_ASSETS))
+        .then(() => self.skipWaiting()));
 });
 
-// Активация: удаляем старые кэши
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+    event.waitUntil(caches.keys()
+        .then(keys => Promise.all(keys
+            .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+            .map(key => caches.delete(key))))
+        .then(() => self.clients.claim()));
 });
 
-// Стратегия запросов:
-// - /api/** → network-first (данные должны быть свежими)
-// - /api/floors, /api/zones → cache-first (карта здания не меняется)
-// - всё остальное → cache-first (статика)
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  if (url.pathname.startsWith('/api/')) {
-    // Карта здания — кэшируем надолго
-    if (url.pathname.startsWith('/api/floors') || url.pathname.startsWith('/api/zones')) {
-      event.respondWith(cacheFirst(event.request));
-    } else {
-      // События и маршруты — всегда свежие, кэш как фолбэк
-      event.respondWith(networkFirst(event.request));
-    }
-  } else {
-    event.respondWith(cacheFirst(event.request));
-  }
+    const { request } = event;
+    const url = new URL(request.url);
+    if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+    event.respondWith(networkFirst(request));
 });
-
-async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    // Оффлайн — возвращаем index.html как фолбэк для навигации
-    return caches.match('/index.html');
-  }
-}
 
 async function networkFirst(request) {
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
+    try {
+        const response = await fetch(request);
+        if (response.ok) {
+            try {
+                const cache = await caches.open(CACHE_NAME);
+                await cache.put(request, response.clone());
+            } catch { /* A full cache must not break a successful response. */ }
+        }
+        return response;
+    } catch {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        if (request.mode === 'navigate') return caches.match('/index.html');
+        return new Response(JSON.stringify({ detail: 'Нет подключения к серверу' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/problem+json; charset=utf-8' },
+        });
     }
-    return response;
-  } catch {
-    return caches.match(request);
-  }
 }

@@ -1,30 +1,83 @@
 // Точка входа: грузим данные, строим здание, включаем интерактив и цикл рендера.
 import * as THREE from 'three';
 import { api } from './api.js';
-import { camera, renderer, raycaster, onFrame, startLoop } from './scene.js';
-import { buildBuilding, getZoneMeshes, pulse } from './building.js';
+import { camera, renderer, raycaster, controls, onFrame, startLoop } from './scene.js';
+import { buildBuilding, getZoneMeshes, pulse, startFacadeReveal, isFacadeRevealDone } from './building.js';
 import { initUi, showZone, showTooltip, hideTooltip } from './ui.js';
+import { initChat } from './chat.js';
 
 const pointer = new THREE.Vector2();
 let hovered = null;
 let startTime = performance.now();
 
+const eventsMap = new Map();
+
 async function boot() {
+    controls.enableZoom = false; // зум включится после анимации подъёма фасада
     const loading = document.getElementById('loading');
     try {
-        const floors = await api.floors();
-        const zones = await api.zones();
-        buildBuilding(floors, zones);
-        initUi(floors, zones);
+        const [floors, zones, events] = await Promise.all([
+            api.floors(),
+            api.zones(),
+            api.upcoming().catch(() => []),
+        ]);
+        for (const ev of events) {
+            if (!eventsMap.has(ev.zoneId)) eventsMap.set(ev.zoneId, []);
+            eventsMap.get(ev.zoneId).push(ev);
+        }
+        await buildBuilding(floors, zones);
+        initUi(floors, zones, eventsMap);
         loading.hidden = true;
     } catch (e) {
         loading.textContent = 'Ошибка загрузки данных: ' + e.message;
+        controls.enableZoom = true;
         return;
     }
 
     setupPicking();
+    setupFacadeReveal();
+    initChat();
     onFrame(() => pulse(0, (performance.now() - startTime) / 1000));
     startLoop();
+}
+
+function setupFacadeReveal() {
+    // Если фасад не загрузился — сразу разрешаем зум
+    if (isFacadeRevealDone()) {
+        controls.enableZoom = true;
+        return;
+    }
+
+    const canvas = renderer.domElement;
+    let done = false;
+
+    function onWheel(e) {
+        if (done) return;
+        e.preventDefault();
+        startFacadeReveal();
+    }
+    function onTouch(e) {
+        if (done) return;
+        startFacadeReveal();
+    }
+    function onPointerDown(e) {
+        if (done) return;
+        startFacadeReveal();
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('touchstart', onTouch, { passive: true });
+    canvas.addEventListener('pointerdown', onPointerDown);
+
+    // Когда анимация завершилась — включаем зум и снимаем перехватчики
+    onFrame(() => {
+        if (!done && isFacadeRevealDone()) {
+            done = true;
+            controls.enableZoom = true;
+            canvas.removeEventListener('wheel', onWheel);
+            canvas.removeEventListener('touchstart', onTouch);
+            canvas.removeEventListener('pointerdown', onPointerDown);
+        }
+    });
 }
 
 function setupPicking() {
@@ -37,20 +90,25 @@ function setupPicking() {
         return rect;
     }
 
+    const NON_CLICKABLE = new Set(['STAIRS', 'ELEVATOR']);
+
     function intersectZone() {
         raycaster.setFromCamera(pointer, camera);
         const hits = raycaster.intersectObjects(getZoneMeshes(), false);
-        return hits.length ? hits[0].object : null;
+        const hit = hits.find((h) => !NON_CLICKABLE.has(h.object.userData.type));
+        return hit ? hit.object : null;
     }
 
-    // Hover — tooltip + курсор
     canvas.addEventListener('pointermove', (event) => {
         const rect = updatePointer(event);
         const mesh = intersectZone();
         if (mesh && mesh.visible && mesh.material.opacity > 0.1) {
             hovered = mesh;
             canvas.style.cursor = 'pointer';
-            showTooltip(mesh.userData.name, event.clientX - rect.left, event.clientY - rect.top);
+            const zoneId = mesh.userData.zoneId;
+            const zoneEvents = eventsMap.get(zoneId);
+            const label = zoneEvents?.length ? zoneEvents[0].title : mesh.userData.name;
+            showTooltip(label, event.clientX - rect.left, event.clientY - rect.top);
         } else {
             hovered = null;
             canvas.style.cursor = 'default';
@@ -58,14 +116,13 @@ function setupPicking() {
         }
     });
 
-    // Click — открыть зону (с защитой от перетаскивания орбиты)
     let downPos = null;
     canvas.addEventListener('pointerdown', (e) => { downPos = { x: e.clientX, y: e.clientY }; });
     canvas.addEventListener('pointerup', (event) => {
         if (!downPos) return;
         const moved = Math.hypot(event.clientX - downPos.x, event.clientY - downPos.y);
         downPos = null;
-        if (moved > 6) return; // это было вращение, не клик
+        if (moved > 6) return;
         updatePointer(event);
         const mesh = intersectZone();
         if (mesh && mesh.visible && mesh.material.opacity > 0.1) {

@@ -16,7 +16,7 @@ public class RouteStep {
 
     private Long zoneId;
     private String zoneName;
-    private int floorNumber;
+    private double floorNumber;
     private String zoneType;
     private String instruction;
     private GeometryDto geometry;

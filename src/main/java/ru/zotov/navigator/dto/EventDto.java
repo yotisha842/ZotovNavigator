@@ -27,7 +27,7 @@ public class EventDto {
     private String posterUrl;
     private Long zoneId;
     private String zoneName;
-    private int floorNumber;
+    private double floorNumber;
     private String source;
 
     public static EventDto from(Event event) {

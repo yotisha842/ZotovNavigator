@@ -30,7 +30,7 @@ public class EventService {
         if (date != null) {
             LocalDateTime from = date.atStartOfDay();
             LocalDateTime to = date.atTime(LocalTime.MAX);
-            return eventRepository.findByStartTimeBetweenOrderByStartTimeAsc(from, to).stream()
+            return eventRepository.findOverlapping(from, to).stream()
                     .filter(e -> type == null || e.getType() == type)
                     .map(EventDto::from)
                     .toList();
@@ -45,9 +45,9 @@ public class EventService {
                 .toList();
     }
 
-    /** Ближайшие события от текущего момента. */
+    /** Текущие и предстоящие события (end_time >= сейчас — включает идущие выставки). */
     public List<EventDto> getUpcoming() {
-        return eventRepository.findByStartTimeGreaterThanEqualOrderByStartTimeAsc(LocalDateTime.now()).stream()
+        return eventRepository.findUpcoming(LocalDateTime.now()).stream()
                 .map(EventDto::from)
                 .toList();
     }
