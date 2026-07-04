@@ -25,6 +25,17 @@ spring:
     init:
       mode: always
       data-locations: classpath:data.sql
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: zotov-navigator
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: ru.zotov.navigator.kafka.EventMessage
+        spring.json.use.type.headers: false
 
 springdoc:
   swagger-ui:
@@ -37,3 +48,9 @@ zotov:
     interval-ms: 3600000    # интервал синхронизации (мс), default 1 час
   embed:
     allowed-origins: "*"    # frame-ancestors для iframe; в prod → https://centrezotov.ru
+
+app:
+  kafka:
+    # Слушатель Kafka можно выключить (например, если брокер не поднят локально): KAFKA_ENABLED=false
+    enabled: ${KAFKA_ENABLED:true}
+    events-topic: ${EVENTS_TOPIC:zotov.events}

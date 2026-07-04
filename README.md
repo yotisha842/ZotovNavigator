@@ -42,6 +42,7 @@
 | **Frontend** | Vanilla JS (ES modules), Three.js для 3D, чистый CSS |
 | **Документация API** | springdoc-openapi (Swagger UI) |
 | **Интеграции** | jsoup — парсинг афиши с сайта centrezotov.ru |
+| **Микросервисы / брокер сообщений** | Apache Kafka — отдельный сервис-краулер публикует события афиши в топик, основной сервис их читает и сохраняет |
 | **Сборка** | Maven |
 
 ## Архитектура
@@ -62,6 +63,29 @@ Spring Boot Backend
 ```
 
 Здание моделируется как 5 цилиндров-этажей; зоны — секторы кольца (`angleStart`/`angleEnd`, `radiusInner`/`radiusOuter`), что естественно ложится на `RingGeometry` в Three.js. Граф навигации строится в памяти при старте: соседние сектора этажа соединены, этажи связаны через лестницы и лифт; кратчайший путь ищется алгоритмом **Dijkstra**.
+
+### Микросервисы и Kafka
+
+Синхронизация афиши вынесена из монолита в отдельный микросервис — `crawler-service` (свой `pom.xml`, независимый Spring Boot проект). Он по расписанию скрапит `centrezotov.ru` через jsoup и публикует найденные события в Kafka-топик `zotov.events`; основной бэкенд читает этот топик и сохраняет события в ту же БД, что использует REST API.
+
+```
+crawler-service (jsoup-скрапинг афиши)
+        │  publish
+        ▼
+   Kafka-топик zotov.events
+        │  consume
+        ▼
+zotov-navigator (EventIngestListener → EventRepository → H2/PostgreSQL)
+```
+
+Поднять Kafka локально и запустить краулер:
+
+```bash
+docker compose up -d                                   # Kafka (KRaft, один брокер)
+./mvnw -f crawler-service/pom.xml spring-boot:run       # сервис-краулер
+```
+
+Оба сервиса устойчивы к отсутствию брокера: если Kafka не поднята, они всё равно стартуют и работают, консьюмер/продюсер просто логируют попытки переподключения в фоне. Подробности — в [`crawler-service/README.md`](crawler-service/README.md).
 
 ## REST API
 
@@ -108,11 +132,12 @@ src/main/java/ru/zotov/navigator/
 └── exception/    глобальная обработка ошибок
 src/main/resources/static/   frontend (Three.js, CSS, JS)
 docs/                        техдокументация и кейс
+crawler-service/             отдельный микросервис-краулер афиши (публикует события в Kafka)
 ```
 
 ## Моя роль
 
-**Кристина Поздеева** — Backend на Java (Spring Boot, Maven): доменная модель, REST API для карты, маршрутов и афиши, серверная логика построения маршрутов, интеграция парсинга событий.
+**Кристина Поздеева** — Backend на Java (Spring Boot, Maven): доменная модель, REST API для карты, маршрутов и афиши, серверная логика построения маршрутов, интеграция парсинга событий, вынесение синхронизации афиши в отдельный микросервис с обменом сообщениями через Kafka.
 
 ## Документация
 
